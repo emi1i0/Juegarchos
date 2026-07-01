@@ -78,5 +78,12 @@ export const games: GameEntry[] = [
     path: "/games/mini-frogger/",
     accent: "#39ff14",
   },
+  {
+    id: "kunai-throw",
+    title: "Kunai Throw",
+    description: "Arroja kunais y clávalos en el tronco que gira sin que un kunai golpee a otro.",
+    path: "/games/kunai-throw/",
+    accent: "#f5a623",
+  },
 ];
 
