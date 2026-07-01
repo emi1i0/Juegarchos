@@ -71,5 +71,12 @@ export const games: GameEntry[] = [
     path: "/games/asteroids/",
     accent: "#ff3f81",
   },
+  {
+    id: "mini-frogger",
+    title: "Mini Frogger",
+    description: "Cruza calles transitadas y ríos saltando sobre troncos flotantes en el momento justo.",
+    path: "/games/mini-frogger/",
+    accent: "#39ff14",
+  },
 ];
 

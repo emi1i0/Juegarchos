@@ -1,0 +1,407 @@
+import {
+  GRID_SIZE,
+  VIEW_WIDTH,
+  VIEW_HEIGHT,
+  MAX_DT,
+  LIVES_START,
+  type LaneData,
+} from "./constants";
+import { Frog } from "./Frog";
+import { Obstacle } from "./Obstacle";
+import { Renderer } from "./Renderer";
+import { Hud } from "./Hud";
+
+type State = "ready" | "playing" | "dead" | "gameover";
+
+const BEST_KEY = "mini-frogger:best";
+
+export class Game {
+  private readonly canvas: HTMLCanvasElement;
+  private readonly ctx: CanvasRenderingContext2D;
+  private readonly frog: Frog;
+  private readonly renderer: Renderer;
+  private readonly hud: Hud;
+
+  private state: State = "ready";
+  private score = 0;
+  private best = Number(localStorage.getItem(BEST_KEY)) || 0;
+  private lives = LIVES_START;
+
+  // Infinite map lanes
+  private readonly lanes = new Map<number, LaneData>();
+  private cameraY = 0;
+  private targetCameraY = 0;
+
+  // Procedural generator state
+  private nextGeneratedRow = -1;
+  private currentBlockType: "grass" | "road" | "river" = "grass";
+  private blockLengthRemaining = 4;
+  private lastDir = 1;
+
+  private maxRowReached = 0;
+  private lastTime = 0;
+
+  constructor(container: HTMLElement) {
+    // Create canvas
+    this.canvas = document.createElement("canvas");
+    this.canvas.className = "game-canvas";
+    this.canvas.width = VIEW_WIDTH;
+    this.canvas.height = VIEW_HEIGHT;
+    container.append(this.canvas);
+    this.ctx = this.canvas.getContext("2d")!;
+
+    // Create models & systems
+    this.frog = new Frog();
+    this.renderer = new Renderer();
+
+    // Create HUD
+    this.hud = new Hud(
+      container,
+      () => this.onAction(),
+      (dx, dy) => this.onMove(dx, dy)
+    );
+    this.hud.setBest(this.best);
+    this.hud.showStartScreen(this.best);
+
+    // Setup input listeners
+    window.addEventListener("keydown", (e) => this.handleKeyDown(e));
+
+    // Handle resizing
+    this.resize();
+    window.addEventListener("resize", () => this.resize());
+
+    // Start game loop
+    this.lastTime = performance.now();
+    requestAnimationFrame((t) => this.tick(t));
+  }
+
+  private resize(): void {
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+
+    const w = parent.clientWidth;
+    const h = parent.clientHeight;
+
+    const scale = Math.min(w / VIEW_WIDTH, h / VIEW_HEIGHT, 1.2);
+    
+    this.canvas.style.width = `${VIEW_WIDTH * scale}px`;
+    this.canvas.style.height = `${VIEW_HEIGHT * scale}px`;
+  }
+
+  private onAction(): void {
+    if (this.state === "ready" || this.state === "gameover") {
+      this.start();
+    }
+  }
+
+  private onMove(dx: number, dy: number): void {
+    if (this.state !== "playing" || this.frog.isDead) return;
+
+    // Snap to grid before moving in case we are drifting on a log
+    this.frog.snapToGrid();
+
+    this.frog.move(dx, dy);
+
+    // Award points based on the maximum distance (highest row reached)
+    const currentDistance = -this.frog.gridY;
+    if (currentDistance > this.maxRowReached) {
+      this.score = currentDistance * 10;
+      this.maxRowReached = currentDistance;
+      this.hud.setScore(this.score);
+    }
+  }
+
+  private handleKeyDown(e: KeyboardEvent): void {
+    if (e.key === "Enter" || e.key === " ") {
+      this.onAction();
+      return;
+    }
+
+    if (this.state !== "playing") return;
+
+    let dx = 0;
+    let dy = 0;
+
+    switch (e.key) {
+      case "ArrowUp":
+      case "w":
+      case "W":
+        dy = -1;
+        break;
+      case "ArrowDown":
+      case "s":
+      case "S":
+        dy = 1;
+        break;
+      case "ArrowLeft":
+      case "a":
+      case "A":
+        dx = -1;
+        break;
+      case "ArrowRight":
+      case "d":
+      case "D":
+        dx = 1;
+        break;
+      default:
+        return; // ignore other keys
+    }
+
+    e.preventDefault();
+    this.onMove(dx, dy);
+  }
+
+  private start(): void {
+    this.state = "playing";
+    this.score = 0;
+    this.lives = LIVES_START;
+    this.maxRowReached = 0;
+    
+    // Clear and reset lanes map
+    this.lanes.clear();
+    
+    // Set up camera starting position
+    // Starting line is Y = 0 (row 0), frog drawn at Y = 400 (bottom area)
+    this.cameraY = -400;
+    this.targetCameraY = -400;
+
+    // Seeding base safe lanes (from row 3 down to row 0)
+    for (let r = 3; r >= 0; r--) {
+      this.lanes.set(r, {
+        row: r,
+        type: "grass",
+        speed: 0,
+        dir: 1,
+        obstacleType: "car",
+        color: "#ffffff",
+        width: 0,
+        spacing: 0,
+        obstacles: [],
+      });
+    }
+
+    // Reset procedural generator
+    this.nextGeneratedRow = -1;
+    this.currentBlockType = "grass";
+    this.blockLengthRemaining = 4;
+    this.lastDir = 1;
+
+    // Pre-generate 30 rows ahead
+    this.generateLanesUpTo(-30);
+
+    // Reset frog position
+    this.frog.reset();
+
+    this.hud.setScore(0);
+    this.hud.setLives(this.lives);
+    this.hud.hideOverlay();
+  }
+
+  private generateLanesUpTo(targetRow: number): void {
+    while (this.nextGeneratedRow >= targetRow) {
+      const row = this.nextGeneratedRow;
+      this.blockLengthRemaining--;
+
+      if (this.blockLengthRemaining <= 0) {
+        // Toggle block types
+        if (this.currentBlockType === "grass") {
+          this.currentBlockType = Math.random() < 0.5 ? "road" : "river";
+          this.blockLengthRemaining = Math.floor(Math.random() * 3) + 2; // 2 to 4 lanes
+        } else {
+          this.currentBlockType = "grass";
+          this.blockLengthRemaining = Math.floor(Math.random() * 2) + 1; // 1 to 2 lanes
+        }
+      }
+
+      // Alternate obstacle direction
+      this.lastDir = -this.lastDir;
+      this.createLane(row, this.currentBlockType, this.lastDir);
+      this.nextGeneratedRow--;
+    }
+  }
+
+  private createLane(row: number, type: "grass" | "road" | "river", dir: number): void {
+    const laneData: LaneData = {
+      row,
+      type,
+      speed: 0,
+      dir,
+      obstacleType: "car",
+      color: "#ffffff",
+      width: 60,
+      spacing: 200,
+      obstacles: [],
+    };
+
+    if (type === "road") {
+      // Speed scales slowly with distance
+      const diffMultiplier = 1.0 + Math.min(1.5, -row / 250);
+      laneData.speed = (50 + Math.random() * 60) * diffMultiplier;
+      laneData.obstacleType = "car";
+      laneData.width = Math.random() < 0.25 ? 85 : (Math.random() < 0.4 ? 50 : 60);
+      laneData.spacing = 160 + Math.random() * 90;
+      laneData.color = ["#ff2a5f", "#00f0ff", "#ffd700", "#ff8c00", "#a020f0", "#ff00ff"][
+        Math.floor(Math.random() * 6)
+      ];
+
+      const count = Math.ceil(VIEW_WIDTH / laneData.spacing) + 1;
+      for (let i = 0; i < count; i++) {
+        const x = i * laneData.spacing + (Math.random() * 30);
+        laneData.obstacles.push(
+          new Obstacle(x, row, laneData.width, laneData.speed, dir, "car", laneData.color)
+        );
+      }
+    } else if (type === "river") {
+      const diffMultiplier = 1.0 + Math.min(1.5, -row / 300);
+      laneData.speed = (40 + Math.random() * 45) * diffMultiplier;
+      laneData.obstacleType = Math.random() < 0.5 ? "log" : "turtle";
+      
+      if (laneData.obstacleType === "log") {
+        laneData.width = Math.random() < 0.33 ? 140 : (Math.random() < 0.5 ? 100 : 80);
+        laneData.color = "#8b5a2b";
+      } else {
+        laneData.width = Math.random() < 0.5 ? 90 : 60;
+        laneData.color = "#32cd32";
+      }
+      
+      laneData.spacing = 150 + Math.random() * 110;
+
+      const count = Math.ceil(VIEW_WIDTH / laneData.spacing) + 1;
+      for (let i = 0; i < count; i++) {
+        const x = i * laneData.spacing + (Math.random() * 20);
+        laneData.obstacles.push(
+          new Obstacle(
+            x,
+            row,
+            laneData.width,
+            laneData.speed,
+            dir,
+            laneData.obstacleType,
+            laneData.color
+          )
+        );
+      }
+    }
+
+    this.lanes.set(row, laneData);
+  }
+
+  private update(dt: number): void {
+    // Determine visible row range to update obstacles
+    const visibleTopRow = Math.floor((this.cameraY - 2 * GRID_SIZE) / GRID_SIZE);
+    const visibleBottomRow = Math.ceil((this.cameraY + VIEW_HEIGHT + 2 * GRID_SIZE) / GRID_SIZE);
+
+    for (let r = visibleTopRow; r <= visibleBottomRow; r++) {
+      const lane = this.lanes.get(r);
+      if (lane) {
+        lane.obstacles.forEach((obs) => obs.update(dt));
+      }
+    }
+
+    // Generate more lanes procedurally as the frog moves forward
+    if (this.state === "playing") {
+      this.generateLanesUpTo(this.frog.gridY - 20);
+    }
+
+    // Collision detection
+    let currentLogSpeed = 0;
+
+    if (this.state === "playing" && !this.frog.isDead) {
+      const row = this.frog.gridY;
+      const currentLane = this.lanes.get(row);
+
+      if (currentLane) {
+        if (currentLane.type === "road") {
+          // Check car collision
+          const hit = currentLane.obstacles.some((obs) =>
+            obs.collidesWith(this.frog.x + 8, this.frog.targetY + 8, GRID_SIZE - 16)
+          );
+          if (hit) {
+            this.killFrog();
+          }
+        } else if (currentLane.type === "river") {
+          // Check support on log/turtle
+          const supportObs = currentLane.obstacles.find((obs) =>
+            obs.collidesWith(this.frog.x + 14, this.frog.targetY + 12, GRID_SIZE - 28)
+          );
+          if (supportObs) {
+            currentLogSpeed = supportObs.speed * supportObs.dir;
+          } else {
+            // Water death
+            this.killFrog();
+          }
+        }
+      }
+
+      // Check if camera scrolled past the frog (fell off screen)
+      if (this.frog.y > this.cameraY + VIEW_HEIGHT + 10) {
+        this.killFrog();
+      }
+    }
+
+    // Update frog kinematics
+    this.frog.update(dt, currentLogSpeed);
+
+    // Camera smoothing & scrolling tracking
+    if (this.state === "playing" && !this.frog.isDead) {
+      // Keep frog centered at about 72% down the screen
+      this.targetCameraY = this.frog.y - VIEW_HEIGHT * 0.72;
+      
+      // Camera only moves up (negative scroll direction)
+      if (this.targetCameraY < this.cameraY) {
+        this.cameraY += (this.targetCameraY - this.cameraY) * 5.0 * dt;
+      }
+    }
+
+    // Death transition handling
+    if (this.state === "dead" && this.frog.isDead) {
+      if (this.frog.deathTime >= this.frog.maxDeathTime) {
+        this.lives--;
+        this.hud.setLives(this.lives);
+
+        if (this.lives > 0) {
+          // (Not used in 1-life mode, but kept for logic safety)
+          this.state = "playing";
+          this.frog.reset();
+        } else {
+          this.gameOver();
+        }
+      }
+    }
+  }
+
+  private killFrog(): void {
+    this.frog.die();
+    this.state = "dead";
+  }
+
+  private gameOver(): void {
+    this.state = "gameover";
+
+    if (this.score > this.best) {
+      this.best = this.score;
+      localStorage.setItem(BEST_KEY, String(this.best));
+      this.hud.setBest(this.best);
+    }
+
+    this.hud.showGameOver(this.score, this.best);
+  }
+
+  private tick(timestamp: number): void {
+    let dt = (timestamp - this.lastTime) / 1000;
+    if (dt > MAX_DT) dt = MAX_DT;
+    this.lastTime = timestamp;
+
+    this.update(dt);
+
+    this.renderer.draw(
+      this.ctx,
+      this.frog,
+      this.lanes,
+      this.cameraY,
+      dt
+    );
+
+    requestAnimationFrame((t) => this.tick(t));
+  }
+}
