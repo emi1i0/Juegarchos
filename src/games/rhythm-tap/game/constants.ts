@@ -62,7 +62,7 @@ export const FIGURES = ["circle", "triangle", "diamond", "square"] as const;
 export type Figure = (typeof FIGURES)[number];
 
 /** Key (`KeyboardEvent.code`) for each figure index, and its display label. */
-export const FIGURE_KEYS = ["KeyD", "KeyF", "KeyJ", "KeyK"];
-export const FIGURE_KEY_LABELS = ["D", "F", "J", "K"];
+export const FIGURE_KEYS = ["ArrowLeft", "ArrowUp", "ArrowDown", "ArrowRight"];
+export const FIGURE_KEY_LABELS = ["←", "↑", "↓", "→"];
 /** Accent color per figure. */
 export const FIGURE_COLORS = ["#ff3f81", "#7cff5c", "#3fd0ff", "#ffd23f"];

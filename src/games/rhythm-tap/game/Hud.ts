@@ -60,7 +60,7 @@ export class Hud {
 
     this.hintEl = document.createElement("div");
     this.hintEl.className = "overlay__hint";
-    this.hintEl.textContent = "teclas D F J K segun la figura  ·  o toca la columna";
+    this.hintEl.textContent = "flechas ← ↑ ↓ → segun la figura  ·  o toca la columna";
 
     this.overlayEl.append(this.titleEl, this.subtitleEl, this.scoreLineEl, this.hintEl);
 
