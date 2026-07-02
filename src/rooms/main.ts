@@ -50,13 +50,33 @@ if (!isLeaderboardEnabled()) {
     <p class="hint">Las salas necesitan la configuracion de Supabase (las mismas credenciales del ranking global). Sin eso, los juegos siguen funcionando solos desde el menu.</p>
   `;
   stack.append(panel);
+} else if (prefillCode && getNickname()) {
+  // Llegada con codigo y nombre ya elegido (link compartido, rejoin, o vuelta
+  // al lobby tras "Jugar otra vez"): entrar directo sin apretar Unirse.
+  void autoJoin(prefillCode, getNickname()!);
 } else {
   renderHome();
 }
 
+async function autoJoin(code: string, player: string): Promise<void> {
+  stack.innerHTML = "";
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `
+    <div class="panel__title">Sala ${code}</div>
+    <p class="hint">Entrando a la sala...</p>
+  `;
+  stack.append(panel);
+
+  // Sin chequeo de presence: el redirect viene de la propia sala y la
+  // presencia vieja de la pagina anterior tarda unos segundos en caerse.
+  const problem = await joinFlow(code, player, { presenceCheck: false });
+  if (problem) renderHome(problem);
+}
+
 // ---------- Home: nombre + crear / unirse ----------
 
-function renderHome(): void {
+function renderHome(joinProblem?: string): void {
   stack.innerHTML = "";
 
   // Nombre del jugador (mismo nickname del ranking global).
@@ -101,6 +121,7 @@ function renderHome(): void {
   joinRow.append(codeInput, joinBtn);
   const joinError = document.createElement("div");
   joinError.className = "error";
+  if (joinProblem) joinError.textContent = joinProblem;
   joinPanel.append(joinRow, joinError);
 
   const tryJoin = async (): Promise<void> => {
@@ -261,14 +282,22 @@ function buildChoices<T extends number>(
 // ---------- Unirse (con chequeo de nick ya conectado) ----------
 
 /** Devuelve un mensaje de error, o null si el join siguio de largo. */
-async function joinFlow(code: string, player: string): Promise<string | null> {
+async function joinFlow(
+  code: string,
+  player: string,
+  opts: { presenceCheck?: boolean } = {},
+): Promise<string | null> {
   const state = await fetchRoomState(code);
   if (!state) return "La sala no existe.";
-  if (state.room.status === "finished") return "Esa sala ya termino.";
+  // Una sala terminada sigue viva ("Jugar otra vez"): los registrados pueden
+  // reentrar al tablero final; los nuevos esperan a que vuelva al lobby.
+  if (state.room.status === "finished" && !state.players.includes(player)) {
+    return "Esa sala ya termino.";
+  }
 
   // Nick ya registrado: es rejoin valido solo si nadie mas esta conectado con
   // ese nombre (presence). Dos amigos con igual nick serian la misma identidad.
-  if (state.players.includes(player)) {
+  if ((opts.presenceCheck ?? true) && state.players.includes(player)) {
     const online = await probePresence(code, player);
     if (online.includes(player)) {
       return "Ese nombre ya esta conectado en la sala. Elegi otro.";

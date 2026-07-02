@@ -86,7 +86,17 @@ export async function joinRoom(code: string, player: string): Promise<JoinResult
     return "error";
   }
   if (!data) return "not-found";
-  if (data.status === "finished") return "finished";
+  if (data.status === "finished") {
+    // Sala terminada pero viva ("Jugar otra vez"): solo puede reentrar un
+    // jugador ya registrado; los nuevos esperan a que vuelva al lobby.
+    const { data: existing } = await supabase
+      .from("room_players")
+      .select("player")
+      .eq("code", code)
+      .eq("player", player)
+      .maybeSingle();
+    if (!existing) return "finished";
+  }
 
   const { error: joinError } = await supabase.from("room_players").upsert({ code, player });
   if (joinError) {
@@ -252,6 +262,43 @@ export async function finishRoom(code: string): Promise<boolean> {
     .eq("code", code);
   if (error) {
     warn("finishRoom", error.message);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * "Jugar otra vez": vuelve la sala al lobby con los mismos jugadores y ajustes,
+ * borrando el historial de rondas/puntajes/votos para que los totales arranquen
+ * de cero. Todos los clientes vuelven a /rooms/ al ver status='lobby'.
+ */
+export async function resetRoom(code: string): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+
+  const deletes = await Promise.all([
+    supabase.from("room_rounds").delete().eq("code", code),
+    supabase.from("room_round_scores").delete().eq("code", code),
+    supabase.from("room_votes").delete().eq("code", code),
+  ]);
+  const failed = deletes.find((r) => r.error);
+  if (failed?.error) {
+    warn("resetRoom", failed.error.message);
+    return false;
+  }
+
+  const { error } = await supabase
+    .from("rooms")
+    .update({
+      status: "lobby",
+      current_round: 0,
+      current_game: null,
+      vote_options: null,
+      deadline: null,
+    })
+    .eq("code", code);
+  if (error) {
+    warn("resetRoom", error.message);
     return false;
   }
   return true;

@@ -7,9 +7,9 @@ interface RenderOpts {
   /** Variante del ranking (p.ej. tamano de sliding-puzzle). */
   variant?: string;
   /**
-   * Puntaje de la partida recien terminada. Si se pasa, el panel intenta
-   * enviarlo (pidiendo un nickname si hace falta) y resalta la fila propia.
-   * Omitir en modo solo-lectura (landing).
+   * Puntaje de la partida recien terminada. Si se pasa, el panel pide
+   * confirmar el nombre (prellenado con el ultimo usado), envia el puntaje y
+   * resalta la fila propia. Omitir en modo solo-lectura (landing).
    */
   score?: number;
 }
@@ -124,8 +124,9 @@ export class LeaderboardPanel {
   }
 
   /**
-   * Renderiza el ranking del juego. Si `opts.score` viene y el jugador ya tiene
-   * nickname, envia el puntaje; si no tiene nickname, muestra el formulario.
+   * Renderiza el ranking del juego. Si `opts.score` viene, muestra el
+   * formulario de nombre (prellenado con el ultimo usado) y envia el puntaje
+   * recien cuando el jugador confirma.
    */
   async render(gameId: string, opts: RenderOpts = {}): Promise<void> {
     this.root.style.display = "";
@@ -137,18 +138,14 @@ export class LeaderboardPanel {
       return;
     }
 
-    // Partida terminada: enviar puntaje o pedir nombre.
+    // Partida terminada: pedir/confirmar el nombre antes de enviar. El nombre
+    // usado la vez anterior aparece prellenado como sugerencia editable.
     if (opts.score !== undefined && Number.isFinite(opts.score)) {
-      if (getNickname()) {
-        await submitScore(gameId, opts.score, { variant: opts.variant });
-        this.pending = null;
-        this.formEl.style.display = "none";
-      } else {
-        this.pending = { gameId, score: opts.score, variant: opts.variant };
-        this.formEl.style.display = "flex";
-        this.inputEl.value = "";
-        this.inputEl.focus();
-      }
+      this.pending = { gameId, score: opts.score, variant: opts.variant };
+      this.formEl.style.display = "flex";
+      this.inputEl.value = getNickname() ?? "";
+      this.inputEl.focus();
+      this.inputEl.select();
     } else {
       this.formEl.style.display = "none";
     }

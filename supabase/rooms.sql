@@ -137,6 +137,20 @@ drop policy if exists "room_votes_update_public" on public.room_votes;
 create policy "room_votes_update_public" on public.room_votes
   for update using (true) with check (true);
 
+-- "Jugar otra vez": al terminar, el host resetea la sala al lobby borrando el
+-- historial de rondas/puntajes/votos (los jugadores registrados se conservan).
+drop policy if exists "room_rounds_delete_public" on public.room_rounds;
+create policy "room_rounds_delete_public" on public.room_rounds
+  for delete using (true);
+
+drop policy if exists "room_round_scores_delete_public" on public.room_round_scores;
+create policy "room_round_scores_delete_public" on public.room_round_scores
+  for delete using (true);
+
+drop policy if exists "room_votes_delete_public" on public.room_votes;
+create policy "room_votes_delete_public" on public.room_votes
+  for delete using (true);
+
 -- Limpieza opcional: las filas son minusculas, pero si algun dia molesta se
 -- puede correr a mano (o con pg_cron):
 --   delete from public.rooms where created_at < now() - interval '2 days';

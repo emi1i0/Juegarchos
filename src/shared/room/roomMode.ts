@@ -9,6 +9,7 @@ import {
   finishRoom,
   openVote,
   reportScore,
+  resetRoom,
   sanitizeCode,
   startRound,
   takeOverHost,
@@ -197,7 +198,15 @@ class RoomModeController implements RoomMode {
     }
     if (room.status === "finished") {
       this.overlay.setStrip(null);
-      this.overlay.showFinal(computeTotals(this.state), this.me);
+      // El host puede volver a la sala al lobby para jugar otra vez con los
+      // mismos jugadores; todos navegan solos al ver status='lobby'.
+      this.overlay.showFinal(computeTotals(this.state), this.me, {
+        hostAction: this.isHost()
+          ? { label: "Jugar otra vez", onClick: () => void this.hostAction(() => resetRoom(this.code)) }
+          : null,
+        waitingText: "El anfitrion puede iniciar otra partida",
+      });
+      this.updateTakeover();
       return;
     }
 
@@ -513,6 +522,7 @@ class RoomModeController implements RoomMode {
     const stable =
       state.room.status === "results" ||
       state.room.status === "voting" ||
+      state.room.status === "finished" ||
       (state.room.status === "playing" && this.reported);
     const present = this.channel?.presentPlayers() ?? [];
     if (!stable || present.includes(state.room.host)) {

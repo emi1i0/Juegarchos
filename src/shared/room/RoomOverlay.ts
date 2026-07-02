@@ -72,6 +72,11 @@ const CSS = `
   font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
 }
 .mg-room__takeover:hover { background: rgba(255, 215, 94, 0.12); }
+.mg-room__exit {
+  display: block; margin-top: 1rem; font-size: 0.82rem; letter-spacing: 0.08em;
+  color: #fff; opacity: 0.55; text-decoration: none;
+}
+.mg-room__exit:hover { opacity: 0.9; text-decoration: underline; }
 `;
 
 function ensureStyles(): void {
@@ -371,8 +376,17 @@ export class RoomOverlay {
     this.addHint("Gana la mayoria; empate se define al azar");
   }
 
-  /** Tablero final con el ganador. */
-  showFinal(totals: TotalEntry[], me: string): void {
+  /** Tablero final con el ganador. El host puede iniciar otra partida. */
+  showFinal(
+    totals: TotalEntry[],
+    me: string,
+    opts: {
+      /** Accion del host ("Jugar otra vez"), o null para los demas. */
+      hostAction: { label: string; onClick: () => void } | null;
+      /** Texto de espera para los no-host. */
+      waitingText: string | null;
+    } = { hostAction: null, waitingText: null },
+  ): void {
     this.show();
     this.addKicker("Fin de la sala");
     this.addTitle("Resultados finales");
@@ -391,9 +405,14 @@ export class RoomOverlay {
     }
     this.boxEl.append(list);
 
-    this.addButton("Volver al inicio", () => {
-      window.location.href = "/";
-    });
+    if (opts.hostAction) this.addButton(opts.hostAction.label, opts.hostAction.onClick);
+    else if (opts.waitingText) this.addHint(opts.waitingText);
+
+    const exit = document.createElement("a");
+    exit.className = "mg-room__exit";
+    exit.href = "/";
+    exit.textContent = "Salir al inicio";
+    this.boxEl.append(exit);
   }
 
   /** Error terminal (sala inexistente, etc.). */
