@@ -1,4 +1,4 @@
-import { GRID_SIZE, VIEW_WIDTH } from "./constants";
+import { GRID_SIZE } from "./constants";
 
 export class Obstacle {
   public x: number;
@@ -10,6 +10,12 @@ export class Obstacle {
   public type: "car" | "log" | "turtle";
   public color: string;
   public laneIndex: number;
+  /**
+   * Length of the lane's repeating pattern (`count * spacing`). Obstacles wrap
+   * modulo this on a ring so their even spacing is preserved forever instead of
+   * drifting into clusters (the old fixed-edge reset let them bunch up).
+   */
+  public wrapWidth: number;
 
   constructor(
     x: number,
@@ -18,7 +24,8 @@ export class Obstacle {
     speed: number,
     dir: number,
     type: "car" | "log" | "turtle",
-    color: string = "#ffffff"
+    color: string = "#ffffff",
+    wrapWidth: number = 0
   ) {
     this.x = x;
     this.laneIndex = laneIndex;
@@ -29,17 +36,17 @@ export class Obstacle {
     this.dir = dir;
     this.type = type;
     this.color = color;
+    this.wrapWidth = wrapWidth;
   }
 
   public update(dt: number): void {
-    // Move obstacle
     this.x += this.speed * this.dir * dt;
 
-    // Wrap around screen
-    if (this.dir === 1 && this.x > VIEW_WIDTH) {
-      this.x = -this.width;
-    } else if (this.dir === -1 && this.x < -this.width) {
-      this.x = VIEW_WIDTH;
+    // Ring wrap: both boundaries sit fully off-screen (x in [-width, wrapWidth-width))
+    // so obstacles never pop in mid-screen and stay evenly spaced.
+    if (this.wrapWidth > 0) {
+      while (this.x < -this.width) this.x += this.wrapWidth;
+      while (this.x >= this.wrapWidth - this.width) this.x -= this.wrapWidth;
     }
   }
 
@@ -68,10 +75,12 @@ export class Obstacle {
   }
 
   /**
-   * True when the point `cx` sits over the obstacle's visible body. Used for
-   * river support: if the frog's centre is on a log/turtle, it floats safely.
+   * Horizontal overlap in pixels between a frog body `[cx - half, cx + half]`
+   * and this obstacle's visible body (negative/0 = no overlap). Used for river
+   * support: a large-enough overlap means the frog is standing on the platform,
+   * so edge/side landings count instead of only a dead-centre hit.
    */
-  public containsX(cx: number): boolean {
-    return cx > this.bodyLeft && cx < this.bodyRight;
+  public overlapX(cx: number, half: number): number {
+    return Math.min(cx + half, this.bodyRight) - Math.max(cx - half, this.bodyLeft);
   }
 }

@@ -166,6 +166,8 @@ class RoomModeController implements RoomMode {
   /** Ronda que esta pagina esta jugando (fijada al cargar). */
   private myRound = 0;
   private reported = false;
+  /** Reporte en vuelo: evita escrituras duplicadas concurrentes del mismo parcial. */
+  private reporting = false;
   /** Ya se disparo el auto-inicio de la partida para esta pagina/ronda. */
   private gameStarted = false;
   private navigating = false;
@@ -395,11 +397,21 @@ class RoomModeController implements RoomMode {
   }
 
   private async submitScore(score: number, finished: boolean): Promise<void> {
-    if (this.reported) return;
-    this.reported = true;
+    // No re-reportar si ya se confirmo, ni lanzar una segunda escritura mientras
+    // hay una en vuelo (varios caminos llaman aca: muerte, timeout del tick, parcial
+    // al cambiar de fase, navegacion).
+    if (this.reported || this.reporting) return;
+    this.reporting = true;
     this.renderWaiting();
     const ok = await reportScore(this.code, this.myRound, this.me, score, finished);
-    if (ok) this.channel?.ping();
+    this.reporting = false;
+    // Solo latchear "reportado" si la escritura funciono: ante un fallo transitorio
+    // (red / RLS / score no finito) queda para reintentar en el proximo tick o al
+    // pasar a resultados, en vez de perder el puntaje y contar como ausente.
+    if (ok) {
+      this.reported = true;
+      this.channel?.ping();
+    }
     void this.refresh();
   }
 
