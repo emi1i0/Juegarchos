@@ -6,9 +6,9 @@ The frog is always logically inside its own lane row (`frog.gridY` picks the lan
 - The frog's centre is `frog.x + GRID_SIZE/2` (uses the interpolated render `x`, so deaths stay in sync with what's on screen).
 - `Obstacle.overlapsX(cx, half)` / `Obstacle.containsX(cx)` test against the obstacle's **visible** body (inset `VISUAL_INSET = 3px` from the raw AABB, since cars/logs are drawn inset). This is what fixed the old "muere cuando no debería": the previous padded AABB counted a ~4px visible gap as a hit.
 - Roads: die when the frog's hitbox (`FROG_HITBOX_HALF = 9`, slightly smaller than the 10px body so near-misses survive) overlaps a car's visible body.
-- Rivers: the frog floats when its **centre** sits over a log/turtle (generous, so log edges are safe); otherwise it drowns. `Frog.update` still handles being carried off-screen by a log.
+- Rivers: the frog floats when **at least `MIN_SUPPORT_OVERLAP` (5px) of its body** (`Obstacle.overlapX(cx, FROG_SUPPORT_HALF)`) overlaps a log/turtle, so landing on the edge/side still counts (the safe window for the frog centre runs ~5px past each visible platform edge). This replaced an exact-centre-point test that felt like a coin flip at the edges. Otherwise it drowns. `Frog.update` still handles being carried off-screen by a log.
 
-If tuning fairness: raise `FROG_HITBOX_HALF` (constants.ts) to make cars deadlier, lower it to be more forgiving; `VISUAL_INSET` (Obstacle.ts) must track how far obstacle bodies are drawn inside their cell.
+If tuning fairness: raise `FROG_HITBOX_HALF` (constants.ts) to make cars deadlier, lower it to be more forgiving; raise `MIN_SUPPORT_OVERLAP` for stricter river landings, lower it to be more forgiving; `VISUAL_INSET` (Obstacle.ts) must track how far obstacle bodies are drawn inside their cell.
 
 ## Spawn de obstaculos (lanes)
 

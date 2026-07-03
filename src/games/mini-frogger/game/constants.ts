@@ -18,6 +18,16 @@ export const LIVES_START = 1;
  */
 export const FROG_HITBOX_HALF = 9;
 
+/**
+ * River support tuning. The frog rides a log/turtle when at least
+ * `MIN_SUPPORT_OVERLAP` pixels of its body (half-width `FROG_SUPPORT_HALF`)
+ * overlap the platform — so landing on the edge/side still counts and it stops
+ * feeling like a coin flip. Raise `MIN_SUPPORT_OVERLAP` for a stricter landing,
+ * lower it to be more forgiving.
+ */
+export const FROG_SUPPORT_HALF = 10;
+export const MIN_SUPPORT_OVERLAP = 5;
+
 export interface LaneData {
   row: number;
   type: "grass" | "road" | "river";
