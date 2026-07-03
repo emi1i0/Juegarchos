@@ -5,6 +5,8 @@ import {
   MAX_DT,
   LIVES_START,
   FROG_HITBOX_HALF,
+  FROG_SUPPORT_HALF,
+  MIN_SUPPORT_OVERLAP,
   type LaneData,
 } from "./constants";
 import { Frog } from "./Frog";
@@ -337,9 +339,12 @@ export class Game {
             this.killFrog("crash");
           }
         } else if (currentLane.type === "river") {
-          // Supported (floats) when the frog's centre sits over a log/turtle.
-          const supportObs = currentLane.obstacles.find((obs) =>
-            obs.containsX(frogCenterX)
+          // Ride a log/turtle when a real chunk of the frog's body overlaps it
+          // (not just the exact centre): landing on the edge/side still counts,
+          // so it no longer feels like a coin flip. Platforms don't overlap and
+          // are wider than the frog, so at most one can support it.
+          const supportObs = currentLane.obstacles.find(
+            (obs) => obs.overlapX(frogCenterX, FROG_SUPPORT_HALF) >= MIN_SUPPORT_OVERLAP
           );
           if (supportObs) {
             currentLogSpeed = supportObs.speed * supportObs.dir;

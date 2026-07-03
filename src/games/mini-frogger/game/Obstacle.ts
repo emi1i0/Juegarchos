@@ -75,10 +75,12 @@ export class Obstacle {
   }
 
   /**
-   * True when the point `cx` sits over the obstacle's visible body. Used for
-   * river support: if the frog's centre is on a log/turtle, it floats safely.
+   * Horizontal overlap in pixels between a frog body `[cx - half, cx + half]`
+   * and this obstacle's visible body (negative/0 = no overlap). Used for river
+   * support: a large-enough overlap means the frog is standing on the platform,
+   * so edge/side landings count instead of only a dead-centre hit.
    */
-  public containsX(cx: number): boolean {
-    return cx > this.bodyLeft && cx < this.bodyRight;
+  public overlapX(cx: number, half: number): number {
+    return Math.min(cx + half, this.bodyRight) - Math.max(cx - half, this.bodyLeft);
   }
 }
