@@ -321,10 +321,12 @@ class RoomModeController implements RoomMode {
         if (this.isHost()) void this.maybeCloseRound();
         break;
       case "results":
+        this.reportPartialIfNeeded();
         this.overlay.setStrip(null);
         this.renderResults();
         break;
       case "voting":
+        this.reportPartialIfNeeded();
         this.overlay.setStrip(null);
         this.renderVoting();
         break;
@@ -341,6 +343,18 @@ class RoomModeController implements RoomMode {
     if (this.gameStarted) return;
     this.gameStarted = true;
     this.hooks.onStart?.();
+  }
+
+  /**
+   * Red de seguridad: si la ronda de esta pagina ya paso a resultados/votacion y
+   * el jugador seguia vivo sin haber reportado (se perdio el submit por deadline
+   * del tick, p.ej. si el host cerro la ronda antes), manda el parcial con el
+   * puntaje en curso para que no quede como ausente (0 puntos). El upsert de
+   * reportScore igual cuenta en el ranking/totales, que se recalculan de la DB.
+   */
+  private reportPartialIfNeeded(): void {
+    if (this.reported || this.myRound <= 0) return;
+    void this.submitScore(this.hooks.getScore(), false);
   }
 
   /** Reporta el parcial si hacia falta y navega a la ronda vigente. */

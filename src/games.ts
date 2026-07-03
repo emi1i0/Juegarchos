@@ -160,12 +160,36 @@ export const games: GameEntry[] = [
     category: "Precisión",
   },
   {
+    id: "blind-time",
+    title: "Crono Ciego",
+    description: "Detén el cronómetro a ciegas lo más cerca posible del tiempo objetivo asignado.",
+    path: "/games/blind-time/",
+    accent: "#ffdd53",
+    category: "Precisión",
+  },
+  {
     id: "shell-game",
     title: "El Trile",
-    description: "Sigue con la mirada el vaso que oculta la moneda. ¡Cada nivel mezcla más rápido, hace más pases y agrega más vasos!",
+    description: "Sigue con la mirada el vaso que oculta la moneda. !Cada nivel mezcla mas rapido, hace mas pases y agrega mas vasos!",
     path: "/games/shell-game/",
     accent: "#ffdd53",
     category: "Reflejos",
+  },
+  {
+    id: "pong",
+    title: "PONG",
+    description: "Pong clasico de un solo jugador: devuelve la pelota con tu paleta, la velocidad aumenta y solo tenes una vida.",
+    path: "/games/pong/",
+    accent: "#ffffff",
+    category: "Arcade",
+  },
+  {
+    id: "block-paddle",
+    title: "Block Paddle",
+    description: "Movi la barra de izquierda a derecha para evitar que la pelota caiga. Cada rebote suma puntos y acelera la pelota.",
+    path: "/games/block-paddle/",
+    accent: "#64c8ff",
+    category: "Arcade",
   },
 ];
 

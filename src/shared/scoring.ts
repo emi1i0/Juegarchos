@@ -53,6 +53,10 @@ export const GAME_SCORING: Record<string, GameScoring> = {
     direction: "lower",
     format: (n) => `${Math.round(n)} ms`,
   },
+  "blind-time": {
+    direction: "lower",
+    format: (n) => `${Math.round(n)} ms`,
+  },
   "car-race": {
     direction: "lower",
     format: (n) => {
@@ -79,6 +83,8 @@ export const GAME_SCORING: Record<string, GameScoring> = {
     direction: "higher",
     format: (n) => `Nivel ${n}`,
   },
+  "pong": { direction: "higher" },
+  "block-paddle": { direction: "higher" },
 };
 
 /**

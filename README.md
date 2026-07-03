@@ -22,13 +22,16 @@ Hecho con **Vite + TypeScript** (sin framework) y desplegado como sitio estátic
 | Cruce Mortal | Arcade | Cruzá calles y ríos saltando sobre troncos flotantes. |
 | Neon Drift | Carreras | Carrera 2D en circuitos neón con los autos de todos en vivo. |
 | Odd One Out | Reflejos | Encontrá la ficha con el tono distinto antes de que se acabe el tiempo. |
+| Dunk Shot | Precisión | Estirá, apuntá y encestá encadenando canastas perfectas. |
 | Memoria | Puzzle | Encontrá los pares: contrarreloj en solitario o por turnos en salas. |
 | Kunai Strike | Precisión | Clavá kunais en el tronco que gira sin que se golpeen entre sí. |
 | Keepers! | Reflejos | Sos el arquero en una tanda infinita de penales. |
 | Rocket SpaceX | Carreras | Fútbol de autos 3D estilo Rocket League. |
-| Crono Ciego | Precisión | Detené el cronómetro a ciegas lo más cerca del objetivo. |
+| Western Shoot | Precisión | Dispará a los blancos para sumar puntos y a los bandidos para que no te eliminen. |
+| Crono Ciego | Precisión | Detené el cronómetro a ciegas lo más cerca del tiempo objetivo. |
 | El Trile | Reflejos | Seguí con la mirada el vaso que oculta la moneda. |
-| Western Shoot | Precisión | Dispará a los blancos para sumar puntos y a los bandidos para que no te eliminen |
+| PONG | Arcade | Pong clásico de un jugador: devolvé la pelota, la velocidad sube y tenés una sola vida. |
+| Block Paddle | Arcade | Moví la barra para que la pelota no caiga; cada rebote suma y acelera. |
 
 ## Empezar
 
