@@ -36,12 +36,35 @@ import type { RoomState } from "./types";
 export interface RoomModeHooks {
   /** Puntaje actual de la partida en curso (para el parcial por timeout). */
   getScore: () => number;
+  /**
+   * Arranca la partida de la ronda (normalmente `beginCountdown`). El modo sala
+   * lo dispara solo al empezar la ronda para que todos inicien juntos, sin que
+   * cada jugador tenga que tocar Enter. Si no se pasa, el juego espera el input
+   * manual como siempre.
+   */
+  onStart?: () => void;
 }
 
 export interface RoomMode {
   readonly active: true;
   /** Llamar en el game-over, donde fuera del modo sala va hud.showRanking. */
   reportScore(finalScore: number): void;
+
+  // Contexto para juegos de tablero compartido (p.ej. Memoria). Los juegos
+  // "cada uno en su pantalla" siguen usando solo reportScore.
+  /** Codigo de la sala. */
+  readonly code: string;
+  /** Nickname propio. */
+  readonly me: string;
+  /** Numero de ronda que esta pagina esta jugando. */
+  round(): number;
+  /** Jugadores registrados en la sala (orden por joined_at, deterministico). */
+  players(): string[];
+  isHost(): boolean;
+  /** Avisa al resto que hay cambios en la DB (broadcast "sync"). */
+  ping(): void;
+  /** Se dispara cuando otro cliente hizo ping (releer la DB). */
+  onSync(cb: () => void): void;
 }
 
 /** Variante fija que usa cada juego con variantes cuando corre en modo sala. */
@@ -99,9 +122,20 @@ export function initRoomMode(gameId: string, hooks: RoomModeHooks): RoomMode | n
 
   const me = getNickname();
   if (!me) {
-    // Nunca se unio: que pase por el lobby a elegir nombre.
+    // Nunca se unio: que pase por el lobby a elegir nombre. Stub inerte
+    // mientras navega (la pagina se descarta enseguida).
     window.location.href = `/rooms/?code=${code}`;
-    return { active: true, reportScore: () => {} };
+    return {
+      active: true,
+      reportScore: () => {},
+      code,
+      me: "",
+      round: () => 0,
+      players: () => [],
+      isHost: () => false,
+      ping: () => {},
+      onSync: () => {},
+    };
   }
 
   const controller = new RoomModeController(gameId, code, me, hooks);
@@ -118,6 +152,8 @@ class RoomModeController implements RoomMode {
   /** Ronda que esta pagina esta jugando (fijada al cargar). */
   private myRound = 0;
   private reported = false;
+  /** Ya se disparo el auto-inicio de la partida para esta pagina/ronda. */
+  private gameStarted = false;
   private navigating = false;
   private refreshing = false;
   private refreshQueued = false;
@@ -125,11 +161,23 @@ class RoomModeController implements RoomMode {
   private actionInFlight = false;
   private voteScheduledForRound = 0;
   private hostAbsentSince: number | null = null;
+  /** El tablero final ya se mostro en esta pagina (para no arrastrar al lobby). */
+  private finalShown = false;
+  /** El tablero final ya se renderizo una vez (evita re-render en cada poll). */
+  private finalRendered = false;
+  /** Si el ultimo render del tablero final fue como host (para re-render tras takeover). */
+  private finalRenderedAsHost = false;
+  /** Ya se ofrecio el "volver a la sala" tras el reset del host. */
+  private lobbyReturnRendered = false;
+  /** Tabla final cacheada: el reset del host borra los puntajes de la DB. */
+  private finalTotals: ReturnType<typeof computeTotals> | null = null;
 
   private readonly gameId: string;
-  private readonly code: string;
-  private readonly me: string;
+  readonly code: string;
+  readonly me: string;
   private readonly hooks: RoomModeHooks;
+  /** Suscriptores del juego al broadcast "sync" (tableros compartidos). */
+  private readonly gameSyncCbs: Array<() => void> = [];
 
   constructor(gameId: string, code: string, me: string, hooks: RoomModeHooks) {
     this.gameId = gameId;
@@ -155,7 +203,10 @@ class RoomModeController implements RoomMode {
     );
 
     this.channel = new RoomChannel(this.code, this.me);
-    this.channel.onSync(() => void this.refresh());
+    this.channel.onSync(() => {
+      void this.refresh();
+      for (const cb of this.gameSyncCbs) cb();
+    });
     this.channel.onPresence(() => this.applyState());
 
     this.applyState(state);
@@ -166,6 +217,24 @@ class RoomModeController implements RoomMode {
 
   reportScore(finalScore: number): void {
     void this.submitScore(finalScore, true);
+  }
+
+  // ---------- Contexto para tableros compartidos ----------
+
+  round(): number {
+    return this.myRound;
+  }
+
+  players(): string[] {
+    return this.state?.players ?? [];
+  }
+
+  ping(): void {
+    this.channel?.ping();
+  }
+
+  onSync(cb: () => void): void {
+    this.gameSyncCbs.push(cb);
   }
 
   // ---------- Estado ----------
@@ -193,19 +262,43 @@ class RoomModeController implements RoomMode {
     const room = this.state.room;
 
     if (room.status === "lobby") {
-      this.navigate(`/rooms/?code=${this.code}`);
+      // El host (que apreto "Volver a la sala") y quien todavia no vio el tablero
+      // final van directo al lobby. Pero a los invitados que estan mirando los
+      // resultados NO se los arrastra: se quedan hasta que ellos elijan volver.
+      if (this.isHost() || !this.finalShown) {
+        this.navigate(`/rooms/?code=${this.code}`);
+        return;
+      }
+      if (!this.lobbyReturnRendered) {
+        this.lobbyReturnRendered = true;
+        this.overlay.setStrip(null);
+        this.overlay.showFinal(this.finalTotals ?? [], this.me, {
+          hostAction: {
+            label: "Volver a la sala",
+            onClick: () => this.navigate(`/rooms/?code=${this.code}`),
+          },
+          waitingText: null,
+        });
+      }
       return;
     }
     if (room.status === "finished") {
-      this.overlay.setStrip(null);
-      // El host puede volver a la sala al lobby para jugar otra vez con los
-      // mismos jugadores; todos navegan solos al ver status='lobby'.
-      this.overlay.showFinal(computeTotals(this.state), this.me, {
-        hostAction: this.isHost()
-          ? { label: "Jugar otra vez", onClick: () => void this.hostAction(() => resetRoom(this.code)) }
-          : null,
-        waitingText: "El anfitrion puede iniciar otra partida",
-      });
+      // Se renderiza una sola vez (no en cada poll, para que no parpadee), salvo
+      // que cambie si soy host: p.ej. tras un takeover, para mostrar el boton.
+      const asHost = this.isHost();
+      if (!this.finalRendered || this.finalRenderedAsHost !== asHost) {
+        this.finalRendered = true;
+        this.finalRenderedAsHost = asHost;
+        this.finalShown = true;
+        if (!this.finalTotals) this.finalTotals = computeTotals(this.state);
+        this.overlay.setStrip(null);
+        this.overlay.showFinal(this.finalTotals, this.me, {
+          hostAction: asHost
+            ? { label: "Volver a la sala", onClick: () => void this.hostAction(() => resetRoom(this.code)) }
+            : null,
+          waitingText: "El anfitrion puede volver a la sala para jugar otra vez",
+        });
+      }
       this.updateTakeover();
       return;
     }
@@ -219,8 +312,12 @@ class RoomModeController implements RoomMode {
     switch (room.status) {
       case "playing":
         this.updateStrip();
-        if (this.reported) this.renderWaiting();
-        else this.overlay.hide();
+        if (this.reported) {
+          this.renderWaiting();
+        } else {
+          this.overlay.hide();
+          this.autoStartGame();
+        }
         if (this.isHost()) void this.maybeCloseRound();
         break;
       case "results":
@@ -233,6 +330,17 @@ class RoomModeController implements RoomMode {
         break;
     }
     this.updateTakeover();
+  }
+
+  /**
+   * Arranca la partida en cuanto la ronda esta "playing" (una sola vez por
+   * pagina), asi todos empiezan juntos sin tocar Enter. Los juegos que no pasan
+   * `onStart` siguen esperando el input manual.
+   */
+  private autoStartGame(): void {
+    if (this.gameStarted) return;
+    this.gameStarted = true;
+    this.hooks.onStart?.();
   }
 
   /** Reporta el parcial si hacia falta y navega a la ronda vigente. */
@@ -259,7 +367,7 @@ class RoomModeController implements RoomMode {
     window.location.href = url;
   }
 
-  private isHost(): boolean {
+  isHost(): boolean {
     return this.state?.room.host === this.me;
   }
 
