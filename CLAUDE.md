@@ -1,6 +1,6 @@
 # MiniGames
 
-Monorepo of small browser minigames (Neon Cylinder, Flappy Bird, Stack Tower, Rhythm Tap, Jump Ball, Reaction Time, City Bloxx, Sliding Puzzle, Asteroids, Mini Frogger, Kunai Throw, and Keepers!), each independently playable, plus a landing page to pick one. Stack: Vite + TypeScript, no framework. Deployed as a static site (Vercel).
+Monorepo of small browser minigames (Neon Cylinder, Flappy Bird, Stack Tower, Rhythm Tap, Jump Ball, Reaction Time, City Bloxx, Sliding Puzzle, Asteroids, Mini Frogger, Kunai Throw, Keepers!, Neon Drift, Odd One Out, Rocket SpaceX, and Mundialopoly 2026), each independently playable, plus a landing page to pick one. Stack: Vite + TypeScript, no framework. Deployed as a static site (Vercel).
 
 ## Conventions (must follow)
 

@@ -45,6 +45,10 @@ export const GAME_SCORING: Record<string, GameScoring> = {
     direction: "higher",
     format: (n) => `${n} ${n === 1 ? "gol" : "goles"}`,
   },
+  "monopoly-mundial": {
+    direction: "higher",
+    format: (n) => `$${Math.round(n)}`,
+  },
   "sliding-puzzle": {
     direction: "lower",
     variants: ["3", "4", "5"],

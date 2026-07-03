@@ -135,5 +135,13 @@ export const games: GameEntry[] = [
     accent: "#3ba7ff",
     category: "Carreras",
   },
+  {
+    id: "monopoly-mundial",
+    title: "Mundialopoly 2026",
+    description: "El clásico juego de propiedades con temática de la Copa 2026: ficha selecciones, compra estadios sede y fundí a tus rivales. Solo contra bots o hasta 8 en salas online.",
+    path: "/games/monopoly-mundial/",
+    accent: "#3fae5c",
+    category: "Mesa",
+  },
 ];
 
