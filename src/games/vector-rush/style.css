@@ -65,32 +65,45 @@ body::after {
 
 .hud {
   position: absolute;
-  inset: 0;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   pointer-events: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   z-index: 10;
+  
+  background: rgba(8, 16, 32, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(139, 232, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .hud__score {
-  margin-top: 24px;
-  font-size: 42px;
-  letter-spacing: 4px;
-  color: #39ff7a;
-  text-shadow:
-    0 0 8px #39ff7a,
-    0 0 24px #39ff7a,
-    0 0 48px #00fff2;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #ffffff;
+  line-height: 1.1;
 }
 
 .hud__best {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #8be8ff;
+  opacity: 0.75;
+}
+
+.hud__best:not(:empty) {
   margin-top: 4px;
-  font-size: 14px;
-  letter-spacing: 3px;
-  color: #ff00e6;
-  text-shadow: 0 0 8px #ff00e6;
-  opacity: 0.85;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 4px;
+  width: 100%;
+  text-align: center;
 }
 
 .overlay {
