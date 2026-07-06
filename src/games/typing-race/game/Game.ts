@@ -1,23 +1,41 @@
 import {
-  GAME_DURATION,
   BEST_KEY,
-  VISIBLE_WORDS,
-  WORD_POOL,
+  CHAMBERS,
+  CLEAN_SENTENCE_RELIEF,
   COUNTDOWN_LABELS,
   COUNTDOWN_STEP,
   MAX_DT,
+  PRESSURE_FLOOR,
+  ROUND_PRESSURE,
+  SENTENCE_TIERS,
+  SURVIVORS_MAX,
+  SURVIVORS_MIN,
+  TIME_BASE,
+  TIME_MIN,
+  TIME_PER_CHAR,
+  TIMEOUT_BULLETS,
 } from "./constants";
 import { Hud } from "./Hud";
 import { SoundEffects } from "./SoundEffects";
 import { initRoomMode, type RoomMode } from "../../../shared/room/roomMode";
 
-type State = "ready" | "countdown" | "playing" | "gameOver";
+type State = "ready" | "countdown" | "playing" | "roulette" | "gameOver";
 
-/** Result of a completed 30-second sprint. */
-export interface TypingResult {
+/** Dramatizacion del gatillo (ms): suspenso, sostener la muerte, sostener el alivio. */
+const TRIGGER_SUSPENSE_MS = 1250;
+const DEATH_HOLD_MS = 1150;
+const SURVIVE_HOLD_MS = 800;
+
+/** Resultado de una condena (partida). */
+export interface RunResult {
+  /** Frases superadas (el puntaje). */
+  frases: number;
+  /** Puesto en la sala virtual (1 = ultimo en pie). */
+  placement: number;
+  startSurvivors: number;
   wpm: number;
-  accuracy: number; // 0..100
-  correctWords: number;
+  accuracy: number;
+  soleSurvivor: boolean;
 }
 
 export class Game {
@@ -27,36 +45,52 @@ export class Game {
 
   private state: State = "ready";
 
-  // Word stream
-  private words: string[] = [];
-  private currentIndex = 0;
-  private typedInput = "";
+  // Frase en curso (modelo estricto: se avanza solo con la tecla correcta).
+  private target = "";
+  private pos = 0;
+  private errorsThisSentence = 0;
+  private lastSentence = "";
 
-  // Live stats
-  private timeLeft = GAME_DURATION;
-  private wpmCorrectChars = 0; // correctly typed chars (+ spaces) for WPM
-  private accuracyCorrect = 0; // correctly typed chars for accuracy
-  private accuracyTotal = 0; // all counted keystrokes for accuracy
-  private correctWords = 0;
+  // Revolver y progreso de la condena.
+  private chamber = 0; // balas cargadas (0..CHAMBERS)
+  private round = 1; // sentencia actual (1-based)
+  private frases = 0; // frases superadas = puntaje
 
-  private bestWpm: number | null = null;
+  // Battle royale virtual.
+  private survivors = 0; // vivos incluyendome
+  private startSurvivors = 0;
+  private reachedSole = false;
 
-  // Timers
+  // Timer por frase.
+  private timeLimit = 0;
+  private timeLeft = 0;
+
+  // Stats secundarias (tabla de resultados).
+  private correctKeystrokes = 0;
+  private totalKeystrokes = 0;
+  private timeElapsed = 0;
+
+  // Pendientes entre la frase y la resolucion del gatillo.
+  private completedThisSentence = false;
+  private pendingPerfect = false;
+
+  private bestFrases: number | null = null;
+
+  // Countdown / loop.
   private countdownTime = 0;
   private lastCountdownIndex = -1;
-
   private lastTime = 0;
 
   constructor(container: HTMLElement) {
     const savedBest = localStorage.getItem(BEST_KEY);
-    if (savedBest) this.bestWpm = parseInt(savedBest, 10);
+    if (savedBest) this.bestFrases = parseInt(savedBest, 10);
 
     this.hud = new Hud(container);
-    this.hud.showStart(this.bestWpm);
+    this.hud.showStart(this.bestFrases);
 
-    // Parcial por timeout: WPM en vivo de lo tecleado hasta el momento.
+    // Parcial por timeout de sala: las frases superadas hasta el momento.
     this.room = initRoomMode("typing-race", {
-      getScore: () => this.liveWpm(),
+      getScore: () => this.frases,
       onStart: () => this.beginCountdown(),
     });
 
@@ -66,154 +100,203 @@ export class Game {
     requestAnimationFrame(this.tick);
   }
 
+  // ---------- Input ----------
+
   private handleKeyDown = (e: KeyboardEvent): void => {
     if (this.state === "playing") {
       this.handleTypingKey(e);
       return;
     }
-
     if (e.key !== "Enter") return;
     if (this.state === "ready") {
       this.beginCountdown();
     } else if (this.state === "gameOver") {
-      // En modo sala se juega una sola partida por ronda: sin reintento.
-      if (this.room) return;
+      if (this.room) return; // una sola condena por ronda en sala
       this.beginCountdown();
     }
   };
 
   private handleTypingKey(e: KeyboardEvent): void {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length !== 1) return; // solo caracteres imprimibles; sin backspace
 
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      if (this.typedInput.length > 0) {
-        this.typedInput = this.typedInput.slice(0, -1);
-        this.renderStream();
+    e.preventDefault();
+    const expected = this.target[this.pos];
+    this.totalKeystrokes++;
+
+    if (e.key === expected) {
+      this.pos++;
+      this.correctKeystrokes++;
+      SoundEffects.playKey();
+      if (this.pos >= this.target.length) {
+        this.completeSentence(false);
+        return;
       }
-      return;
+      this.hud.renderSentence(this.target, this.pos);
+    } else {
+      // Cada tecla equivocada carga una bala en el tambor, al instante.
+      this.errorsThisSentence++;
+      this.chamber = Math.min(CHAMBERS, this.chamber + 1);
+      SoundEffects.playError();
+      this.hud.flashError();
+      this.hud.setChamber(this.chamber);
     }
-
-    if (e.key === " ") {
-      e.preventDefault();
-      this.submitWord();
-      return;
-    }
-
-    // Only single printable characters count as typing.
-    if (e.key.length !== 1) return;
-
-    const target = this.words[this.currentIndex] ?? "";
-    const pos = this.typedInput.length;
-    this.typedInput += e.key;
-
-    const correct = e.key === target[pos];
-    if (correct) SoundEffects.playKey();
-    else SoundEffects.playError();
-
-    this.renderStream();
   }
 
-  private submitWord(): void {
-    // Ignore a space pressed with an empty buffer (no skipping words).
-    if (this.typedInput.length === 0) return;
+  // ---------- Frase / ronda ----------
 
-    const target = this.words[this.currentIndex] ?? "";
-
-    let matched = 0;
-    for (let i = 0; i < target.length; i++) {
-      if (this.typedInput[i] === target[i]) matched++;
+  private pickSentence(): string {
+    const r = this.round;
+    const tier = r >= 13 ? 3 : r >= 8 ? 2 : r >= 4 ? 1 : 0;
+    const pool = SENTENCE_TIERS[tier];
+    let s = pool[Math.floor(Math.random() * pool.length)];
+    if (pool.length > 1) {
+      while (s === this.lastSentence) s = pool[Math.floor(Math.random() * pool.length)];
     }
-
-    const perfect = this.typedInput === target;
-    this.wpmCorrectChars += matched + (perfect ? 1 : 0); // +1 for the space
-    this.accuracyCorrect += matched;
-    this.accuracyTotal += this.typedInput.length;
-
-    if (perfect) {
-      this.correctWords++;
-      SoundEffects.playWord();
-    }
-
-    this.currentIndex++;
-    this.typedInput = "";
-    this.ensureWordsAhead();
-
-    this.hud.updateStats(this.timeLeft, this.liveWpm(), this.liveAccuracy());
-    this.renderStream();
+    this.lastSentence = s;
+    return s;
   }
 
-  private ensureWordsAhead(): void {
-    while (this.words.length < this.currentIndex + VISIBLE_WORDS) {
-      this.words.push(WORD_POOL[Math.floor(Math.random() * WORD_POOL.length)]);
-    }
+  private loadSentence(): void {
+    this.target = this.pickSentence();
+    this.pos = 0;
+    this.errorsThisSentence = 0;
+
+    const raw = TIME_BASE + this.target.length * TIME_PER_CHAR;
+    const pressure = Math.max(PRESSURE_FLOOR, 1 - this.round * ROUND_PRESSURE);
+    this.timeLimit = Math.max(TIME_MIN, raw * pressure);
+    this.timeLeft = this.timeLimit;
+
+    this.hud.setRound(this.round);
+    this.hud.setChamber(this.chamber);
+    this.hud.setFrases(this.frases);
+    this.hud.setSurvivors(this.survivors, this.startSurvivors);
+    this.hud.setTimer(this.timeLeft, this.timeLimit);
+    this.hud.renderSentence(this.target, this.pos);
   }
 
   private beginCountdown(): void {
     this.state = "countdown";
 
-    this.words = [];
-    this.currentIndex = 0;
-    this.typedInput = "";
-    this.timeLeft = GAME_DURATION;
-    this.wpmCorrectChars = 0;
-    this.accuracyCorrect = 0;
-    this.accuracyTotal = 0;
-    this.correctWords = 0;
-    this.ensureWordsAhead();
+    this.chamber = 0;
+    this.round = 1;
+    this.frases = 0;
+    this.correctKeystrokes = 0;
+    this.totalKeystrokes = 0;
+    this.timeElapsed = 0;
+    this.reachedSole = false;
+    this.lastSentence = "";
+    this.survivors = randInt(SURVIVORS_MIN, SURVIVORS_MAX);
+    this.startSurvivors = this.survivors;
+
+    this.loadSentence();
 
     this.countdownTime = 0;
     this.lastCountdownIndex = -1;
 
     this.hud.hideOverlay();
+    this.hud.showChrome();
     this.hud.showCountdown(COUNTDOWN_LABELS[0]);
   }
 
   private startPlaying(): void {
     this.state = "playing";
     this.hud.showPlay();
-    this.hud.updateStats(this.timeLeft, 0, 100);
-    this.renderStream();
+    this.hud.renderSentence(this.target, this.pos);
   }
 
-  private renderStream(): void {
-    this.hud.renderStream(this.words, this.currentIndex, this.typedInput);
+  // ---------- Gatillo (ruleta) ----------
+
+  private completeSentence(timedOut: boolean): void {
+    this.state = "roulette";
+    this.completedThisSentence = !timedOut;
+    this.pendingPerfect = !timedOut && this.errorsThisSentence === 0;
+    if (timedOut) this.chamber = Math.min(CHAMBERS, this.chamber + TIMEOUT_BULLETS);
+
+    this.hud.setChamber(this.chamber);
+    this.hud.startTriggerPull(this.chamber, timedOut);
+    SoundEffects.playSpin();
+    window.setTimeout(() => this.resolveTrigger(), TRIGGER_SUSPENSE_MS);
   }
 
-  private liveWpm(): number {
-    const elapsed = GAME_DURATION - this.timeLeft;
-    if (elapsed < 1) return 0;
-    return Math.round(this.wpmCorrectChars / 5 / (elapsed / 60));
+  private resolveTrigger(): void {
+    if (this.state !== "roulette") return;
+    const dead = Math.random() < this.chamber / CHAMBERS;
+
+    if (dead) {
+      SoundEffects.playGunshot();
+      this.hud.showDeath();
+      window.setTimeout(() => this.endGame(), DEATH_HOLD_MS);
+      return;
+    }
+
+    SoundEffects.playClick();
+    if (this.completedThisSentence) this.frases++;
+    if (this.pendingPerfect) this.chamber = Math.max(0, this.chamber - CLEAN_SENTENCE_RELIEF);
+    this.updateSurvivors();
+    this.round++;
+    this.hud.showClickRelief(this.chamber, this.frases);
+    window.setTimeout(() => this.nextSentence(), SURVIVE_HOLD_MS);
   }
 
-  private liveAccuracy(): number {
-    if (this.accuracyTotal === 0) return 100;
-    return Math.round((this.accuracyCorrect / this.accuracyTotal) * 100);
+  private nextSentence(): void {
+    if (this.state !== "roulette") return;
+    this.state = "playing";
+    this.loadSentence();
+    this.hud.showPlay();
   }
+
+  /** Elimina a otros presos (ambiente battle royale). Nunca baja de 1 (vos). */
+  private updateSurvivors(): void {
+    if (this.survivors <= 1) return;
+    const elim = Math.min(this.survivors - 1, Math.ceil(this.survivors * 0.11) + randInt(0, 2));
+    if (elim <= 0) return;
+    this.survivors -= elim;
+    SoundEffects.playDistantShots(elim);
+    this.hud.setSurvivors(this.survivors, this.startSurvivors);
+    if (this.survivors <= 1 && !this.reachedSole) {
+      this.reachedSole = true;
+      this.hud.showSoleSurvivor();
+    }
+  }
+
+  // ---------- Fin ----------
 
   private endGame(): void {
     this.state = "gameOver";
 
-    const wpm = Math.round(this.wpmCorrectChars / 5 / (GAME_DURATION / 60));
-    const accuracy = this.liveAccuracy();
-
+    const score = this.frases;
     let isNewBest = false;
-    if (this.bestWpm === null || wpm > this.bestWpm) {
-      this.bestWpm = wpm;
-      localStorage.setItem(BEST_KEY, wpm.toString());
+    if (this.bestFrases === null || score > this.bestFrases) {
+      this.bestFrases = score;
+      localStorage.setItem(BEST_KEY, String(score));
       isNewBest = true;
     }
 
-    SoundEffects.playFinish();
-    this.hud.showGameOver(
-      { wpm, accuracy, correctWords: this.correctWords },
-      isNewBest,
-      this.bestWpm
-    );
+    const minutes = this.timeElapsed / 60;
+    const wpm = minutes > 0 ? Math.round(this.correctKeystrokes / 5 / minutes) : 0;
+    const accuracy =
+      this.totalKeystrokes > 0
+        ? Math.round((this.correctKeystrokes / this.totalKeystrokes) * 100)
+        : 100;
+    const placement = this.reachedSole ? 1 : this.survivors;
 
-    if (this.room) this.room.reportScore(wpm);
-    else this.hud.showRanking("typing-race", wpm);
+    const result: RunResult = {
+      frases: score,
+      placement,
+      startSurvivors: this.startSurvivors,
+      wpm,
+      accuracy,
+      soleSurvivor: this.reachedSole,
+    };
+
+    this.hud.showGameOver(result, isNewBest, this.bestFrases ?? 0);
+
+    if (this.room) this.room.reportScore(score);
+    else this.hud.showRanking("typing-race", score, "survival");
   }
+
+  // ---------- Loop ----------
 
   private tick = (now: number): void => {
     const dt = Math.min((now - this.lastTime) / 1000, MAX_DT);
@@ -226,7 +309,6 @@ export class Game {
     if (this.state === "countdown") {
       this.countdownTime += dt;
       const index = Math.floor(this.countdownTime / COUNTDOWN_STEP);
-
       if (index >= COUNTDOWN_LABELS.length) {
         this.hud.showCountdown(null);
         this.startPlaying();
@@ -236,13 +318,14 @@ export class Game {
         this.hud.showCountdown(COUNTDOWN_LABELS[index]);
       }
     } else if (this.state === "playing") {
+      this.timeElapsed += dt;
       this.timeLeft -= dt;
       if (this.timeLeft <= 0) {
         this.timeLeft = 0;
-        this.hud.updateStats(0, this.liveWpm(), this.liveAccuracy());
-        this.endGame();
+        this.hud.setTimer(0, this.timeLimit);
+        this.completeSentence(true);
       } else {
-        this.hud.updateStats(this.timeLeft, this.liveWpm(), this.liveAccuracy());
+        this.hud.setTimer(this.timeLeft, this.timeLimit);
       }
     }
   }
@@ -250,4 +333,9 @@ export class Game {
   dispose(): void {
     window.removeEventListener("keydown", this.handleKeyDown);
   }
+}
+
+/** Entero aleatorio en [min, max]. */
+function randInt(min: number, max: number): number {
+  return min + Math.floor(Math.random() * (max - min + 1));
 }
