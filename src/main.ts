@@ -22,6 +22,28 @@ nav.innerHTML = `
   </div>
 `;
 
+// ---------- Banner de la comunidad de Discord ----------
+
+const discordBanner = document.createElement("a");
+discordBanner.className = "discord-banner";
+discordBanner.href = "https://discord.gg/pdFQVrKXN";
+discordBanner.target = "_blank";
+discordBanner.rel = "noopener noreferrer";
+discordBanner.innerHTML = `
+  <div class="discord-banner__glow"></div>
+  <div class="discord-banner__text">
+    <span class="discord-banner__kicker">Comunidad</span>
+    <h2 class="discord-banner__title">&iexcl;Sumate al Discord!</h2>
+    <p class="discord-banner__subtitle">Enter&aacute;te de los juegos nuevos, coordin&aacute; partidas y compart&iacute; tus r&eacute;cords con la comunidad.</p>
+  </div>
+  <span class="discord-banner__cta">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M20.317 4.369A19.79 19.79 0 0 0 15.885 3c-.2.36-.43.842-.588 1.226a18.27 18.27 0 0 0-5.594 0A12.6 12.6 0 0 0 9.11 3a19.74 19.74 0 0 0-4.435 1.369C1.86 8.59 1.096 12.71 1.478 16.77a19.9 19.9 0 0 0 6.073 3.08c.49-.669.927-1.38 1.302-2.128a12.9 12.9 0 0 1-2.05-.988c.172-.126.34-.257.502-.392a14.2 14.2 0 0 0 12.19 0c.164.14.332.271.502.392-.654.388-1.343.72-2.052.99.375.746.81 1.457 1.3 2.126a19.88 19.88 0 0 0 6.076-3.08c.448-4.706-.766-8.79-3.006-12.401ZM8.02 14.331c-1.183 0-2.157-1.086-2.157-2.42 0-1.334.955-2.42 2.157-2.42 1.21 0 2.176 1.095 2.157 2.42 0 1.334-.955 2.42-2.157 2.42Zm7.96 0c-1.183 0-2.157-1.086-2.157-2.42 0-1.334.955-2.42 2.157-2.42 1.21 0 2.176 1.095 2.157 2.42 0 1.334-.946 2.42-2.157 2.42Z"/>
+    </svg>
+    Unirme <span class="discord-banner__arrow">&rarr;</span>
+  </span>
+`;
+
 // ---------- Titulo + buscador ----------
 
 const hero = document.createElement("header");
@@ -383,6 +405,7 @@ footer.innerHTML = `
       <span class="site-footer__links-title">Navegar</span>
       <a href="/">Juegos<span class="site-footer__arrow">&rarr;</span></a>
       ${roomsOn ? `<a href="/rooms/">Salas<span class="site-footer__arrow">&rarr;</span></a>` : ""}
+      <a href="https://discord.gg/pdFQVrKXN" target="_blank" rel="noopener noreferrer">Discord<span class="site-footer__arrow">&rarr;</span></a>
     </nav>
   </div>
   <div class="site-footer__bottom">
@@ -391,10 +414,15 @@ footer.innerHTML = `
   </div>
 `;
 
+// Fila de banners: Discord a la izquierda y (si aplica) Modo Salas a la derecha.
+const bannersRow = document.createElement("div");
+bannersRow.className = "banners-row";
+bannersRow.append(discordBanner);
+if (roomsOn) bannersRow.append(roomsBanner);
+
 const main = document.createElement("main");
 main.className = "page";
-main.append(hero, filtersBar);
-if (roomsOn) main.append(roomsBanner);
+main.append(bannersRow, hero, filtersBar);
 main.append(grid, empty);
 
 app.append(nav, main, footer);

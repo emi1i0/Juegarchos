@@ -292,15 +292,34 @@ a {
 }
 
 /* ---------- Banner de salas ---------- */
+/* Fila que coloca el banner de Discord y el de Modo Salas uno al lado del otro. */
+.banners-row {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.banners-row > * {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .banners-row {
+    flex-direction: column;
+  }
+}
+
 .rooms-banner {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 18px;
   flex-wrap: wrap;
-  margin-bottom: 40px;
-  padding: 26px 32px;
+  padding: 22px 26px;
   background: #131313;
   border: 2.5px solid var(--ink);
   border-radius: var(--card-radius);
@@ -345,11 +364,11 @@ a {
 
 .rooms-banner__text {
   position: relative;
-  min-width: min(300px, 100%);
+  min-width: min(220px, 100%);
 }
 
 .rooms-banner__kicker {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -357,33 +376,33 @@ a {
 }
 
 .rooms-banner__title {
-  font-size: clamp(24px, 3.4vw, 32px);
+  font-size: clamp(20px, 2.2vw, 25px);
   font-weight: 900;
   letter-spacing: -0.6px;
-  margin: 4px 0 6px;
+  margin: 4px 0 5px;
 }
 
 .rooms-banner__subtitle {
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.45;
   color: rgba(239, 238, 230, 0.7);
-  max-width: 520px;
+  max-width: 420px;
 }
 
 .rooms-banner__cta {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #131313;
   background: #efeee6;
   border-radius: 999px;
-  padding: 14px 26px;
+  padding: 12px 22px;
   transition: background 0.15s ease;
 }
 
@@ -396,6 +415,95 @@ a {
 }
 
 .rooms-banner:hover .rooms-banner__arrow {
+  transform: translateX(5px);
+}
+
+/* ---------- Banner de Discord ---------- */
+.discord-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 22px 26px;
+  background: #404eed;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--card-radius);
+  color: #fff;
+  text-decoration: none;
+  overflow: hidden;
+  transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.22s ease;
+}
+
+.discord-banner:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 0 -6px var(--ink);
+}
+
+.discord-banner__glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 140% at 88% 50%, rgba(88, 101, 242, 0.9), transparent 62%),
+    radial-gradient(60% 130% at 6% 40%, rgba(255, 255, 255, 0.14), transparent 60%);
+  pointer-events: none;
+}
+
+.discord-banner__text {
+  position: relative;
+  min-width: min(220px, 100%);
+}
+
+.discord-banner__kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.discord-banner__title {
+  font-size: clamp(20px, 2.2vw, 25px);
+  font-weight: 900;
+  letter-spacing: -0.6px;
+  margin: 4px 0 5px;
+}
+
+.discord-banner__subtitle {
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.78);
+  max-width: 420px;
+}
+
+.discord-banner__cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #404eed;
+  background: #fff;
+  border-radius: 999px;
+  padding: 12px 22px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.discord-banner:hover .discord-banner__cta {
+  background: #23272a;
+  color: #fff;
+}
+
+.discord-banner__arrow {
+  transition: transform 0.22s ease;
+}
+
+.discord-banner:hover .discord-banner__arrow {
   transform: translateX(5px);
 }
 
