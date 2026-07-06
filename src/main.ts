@@ -16,9 +16,18 @@ const nav = document.createElement("nav");
 nav.className = "topbar";
 nav.innerHTML = `
   <a class="topbar__logo" href="/"><img src="/juegachos.png" alt="JUEGACHOS" /></a>
-  <div class="topbar__links">
-    <a href="/" class="is-active">Juegos</a>
-    ${roomsOn ? `<a href="/rooms/">Salas</a>` : ""}
+  <div class="topbar__right">
+    <label class="topbar__name">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4">
+        <circle cx="12" cy="8" r="4"></circle>
+        <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"></path>
+      </svg>
+      <input type="text" class="topbar__name-input" placeholder="Tu nombre" autocomplete="off" maxlength="${NICKNAME_MAX}" />
+    </label>
+    <div class="topbar__links">
+      <a href="/" class="is-active">Juegos</a>
+      ${roomsOn ? `<a href="/rooms/">Salas</a>` : ""}
+    </div>
   </div>
 `;
 
@@ -51,13 +60,6 @@ hero.className = "hero";
 hero.innerHTML = `
   <h1 class="hero__title">Todos los juegos</h1>
   <div class="hero__tools">
-    <label class="hero__name">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4">
-        <circle cx="12" cy="8" r="4"></circle>
-        <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"></path>
-      </svg>
-      <input type="text" class="hero__name-input" placeholder="Tu nombre" autocomplete="off" maxlength="${NICKNAME_MAX}" />
-    </label>
     <label class="hero__search">
       <input type="search" placeholder="Buscar" autocomplete="off" />
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4">
@@ -71,7 +73,7 @@ const searchInput = hero.querySelector<HTMLInputElement>(".hero__search input")!
 
 // Editor del nombre global: lo que se guarda aca (localStorage) es lo que cada
 // juego usa para enviar el puntaje al ranking sin volver a preguntar.
-const nameInput = hero.querySelector<HTMLInputElement>(".hero__name-input")!;
+const nameInput = nav.querySelector<HTMLInputElement>(".topbar__name-input")!;
 nameInput.value = getNickname() ?? "";
 const saveName = () => {
   const saved = setNickname(nameInput.value);
