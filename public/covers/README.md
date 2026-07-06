@@ -141,3 +141,15 @@ Variante minimal (por si la de arriba sale muy cargada):
 ```text
 Minimal flat logo wordmark "JUEGACHOS", chunky geometric sans-serif uppercase letters, slight italic lean for speed, solid black letters with one accent letter in neon cyan, tiny pixel-art spark replacing the dot-free design, clean vector style, extremely legible, spelled exactly "JUEGACHOS", centered on a plain cream background, no other elements, no watermark.
 ```
+
+## Final Sentence — guardar como `typing-race.jpg`
+
+```text
+Square 1:1 video game cover art, bold indie game key art style, dramatic cinematic lighting, clean composition with a strong focal subject, high detail digital illustration, no watermark, no borders. A tense survival-thriller scene inside a dark cold steel hangar lit by a single harsh overhead interrogation light: a prisoner sits at an old metal typewriter with a fresh sheet of paper, a loaded revolver pressed against their temple by a masked faceless guard lurking in shadow. In the foreground a six-chamber revolver cylinder glows, several chambers holding brass bullets. Deep gunmetal grays and near-black with one strong bleeding crimson-red accent light, heavy film grain, hard vignette, volumetric dust in the light beam, oppressive claustrophobic mood in the spirit of Saw and Squid Game. The game title "FINAL SENTENCE" is integrated into the artwork as a bold stylized distressed-typewriter videogame logo, large and readable, spelled exactly "FINAL SENTENCE".
+```
+
+## Mundialopoly 2026 — guardar como `monopoly-mundial.jpg`
+
+```text
+Square 1:1 video game cover art, bold indie game key art style, vibrant saturated colors, dramatic lighting, clean composition with a strong focal subject, slight retro-arcade flavor, high detail digital illustration, no watermark, no borders. Top-down tilted view of a Monopoly-style board game themed on the 2026 football World Cup: a green football-pitch game board with colorful property tiles around the edge, a golden World Cup trophy standing in the center, two white dice mid-roll, small metallic game tokens shaped like a football boot and a whistle, confetti in green, red and blue falling, stadium floodlights glowing behind, festive Mexico USA Canada atmosphere. The game title "MUNDIALOPOLY" is integrated into the artwork as a bold stylized videogame logo, large and readable, spelled exactly "MUNDIALOPOLY", with a smaller golden "2026" below it.
+```

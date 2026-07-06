@@ -1,37 +1,42 @@
-# Mecano (typing-race)
+# Final Sentence (typing-race)
 
-A 30-second typing sprint. Words stream in from a pool of common Spanish words (no diacritics, so any keyboard layout can type them); the player types them one by one and the run is scored by **PPM** (palabras por minuto / WPM). Higher is better.
+Thriller de mecanografia de supervivencia. Despertas en un hangar oscuro con un revolver en la sien: escribi cada frase sin fallar porque **cada tecla equivocada carga una bala en el tambor**. Al terminar (o al vencerse el tiempo de) cada frase se jala el gatillo — una ruleta rusa con probabilidad de morir = balas/6. Sobrevivis o caes. El puntaje es **frases superadas** (mayor = mejor). Ambiente battle royale: un contador de "vivos" que baja con disparos lejanos mientras avanzas.
+
+> El id del juego sigue siendo `typing-race` (por la URL, el registro y el ranking); solo cambio el concepto. Antes era "Mecano", un sprint de 30s por PPM.
 
 ## Module layout
 
-- `main.ts` — entry point, mounts the `Game` instance to `#app`.
-- `game/Game.ts` — state machine, keyboard handling, the 30s delta-time timer, live stats, WPM/accuracy scoring, and best-score persistence in localStorage.
-- `game/Hud.ts` — DOM manager: HUD stat bar (time / PPM / precision), the word stream with per-character feedback and a blinking caret, the start/game-over overlays, the countdown, and the leaderboard panel.
-- `game/SoundEffects.ts` — synthesized Web Audio effects (no assets): countdown tick, a soft click per correct keystroke, a bright blip on a completed word, a low buzz on a mistyped character, and a rising flourish on finish.
-- `game/constants.ts` — tuning: sprint duration (30s), storage key, how many words to render ahead (`VISIBLE_WORDS`), countdown steps, and the `WORD_POOL`.
-- `style.css` — dark glassmorphic styling; monospace word stream (JetBrains Mono) with correct/incorrect/extra character colors and an animated caret.
+- `main.ts` — entry point, monta `Game` en `#app`.
+- `game/Game.ts` — maquina de estados (`ready | countdown | playing | roulette | gameOver`), tecleo estricto, timer por frase, revolver/ruleta, battle royale virtual, progreso en vivo de la sala y persistencia del mejor puntaje.
+- `game/Hud.ts` — DOM: barra de estado (vivos / sentencia / superadas / **ppm en vivo**), el **revolver SVG** (tambor de 6 recamaras que se llenan de laton), la frase con feedback por caracter, la barra de tiempo, los momentos de gatillo/clic/muerte, el **panel lateral de sala** (`fs-live`) y overlays + ranking.
+- `game/SoundEffects.ts` — Web Audio sintetizado (sin assets): tecla, bala que entra, giro del tambor, clic del percutor (alivio), disparo (muerte) y disparos lejanos (otros presos que caen).
+- `game/TypingChannel.ts` — canal Realtime efimero (broadcast puro, sin DB) para ver el progreso del resto de la sala en vivo. Un canal por sala (`type:<code>`).
+- `game/constants.ts` — frases por nivel de dificultad (`SENTENCE_TIERS`) y todos los parametros (tambor, timer por frase, presos iniciales, alivio por frase perfecta).
+- `style.css` — estetica de hangar de acero: cono de luz cenital, grano de pelicula, vineta, acento carmesi sangre; tipografia de maquina de escribir (Special Elite) + condensada (Oswald) + monospace (Courier Prime).
 
-## How it works
+## Como funciona
 
-1. **Countdown**: Enter starts the mandatory 3 / 2 / 1 / YA countdown, then play begins.
-2. **Typing**: The stream renders the current word (with live per-character feedback) plus upcoming context. Letters append to the current buffer; `Backspace` deletes; `Space` submits the word and advances. The word list grows on the fly (`ensureWordsAhead`) so it never runs out.
-3. **Scoring**: On each submitted word, matched characters are counted. Net WPM = correct characters / 5 / minutes (a completed word contributes its space too); accuracy = correct characters / total keystrokes. When the 30s expire the final WPM is computed, compared with the personal best, stored, and submitted to the global ranking.
+1. **Countdown**: Enter arranca el 3 / 2 / 1 / YA. La primera frase ya se ve detras de la cuenta.
+2. **Tecleo estricto** (sin backspace): se avanza solo al teclear el caracter correcto; una tecla equivocada NO avanza y **carga una bala** (`chamber++`, tope 6), con sacudida roja y golpe del revolver. Los espacios se teclean como un caracter mas.
+3. **Timer por frase**: `TIME_BASE + chars * TIME_PER_CHAR`, apretado por ronda (`ROUND_PRESSURE`, piso `PRESSURE_FLOOR`). Si se agota con la frase incompleta se fuerza el gatillo con `TIMEOUT_BULLETS` de castigo.
+4. **Gatillo (ruleta)**: al completar/vencer la frase, estado `roulette`: gira el tambor (`TRIGGER_SUSPENSE_MS`) y se resuelve `random() < chamber/6`. Una **frase perfecta vacia una recamara ANTES de jalar** (`CLEAN_SENTENCE_RELIEF`), asi baja el riesgo de esa misma ruleta (simetrico a "cada error carga una bala"). Muerte -> disparo + fogonazo + `gameOver`. Sobrevive -> `*CLIC*` y `frases++` (solo si completo).
+5. **Battle royale virtual** (`updateSurvivors`): arranca con `SURVIVORS_MIN..MAX` presos (incluyendote) y cada ronda caen algunos con disparos lejanos; nunca baja de 1 (vos). Llegar a 1 = "ULTIMO EN PIE". El puesto al morir es `survivors` (o 1 si fuiste el ultimo).
 
-## State machine (`Game.ts`)
+## Puntaje y ranking
 
-- `ready`: start screen, Enter begins the countdown.
-- `countdown`: 3 / 2 / 1 / YA.
-- `playing`: keystrokes drive typing; the frame loop decrements `timeLeft` and refreshes the HUD.
-- `gameOver`: results overlay (PPM, precision, correct words) + retry with Enter.
+- **Puntaje codificado = frases superadas (primario) + ppm (desempate)**, via `encodeScore(frases, ppm)` (`constants.ts`): `frases * 1000 + min(ppm, 999)`. Asi el ranking ordena **primero por frases y despues por velocidad**, tanto en el global como en la sala (que solo maneja un numero por jugador). `meta.ts` lo decodifica en `format` para mostrar `"7 frases · 62 ppm"`.
+- Variante propia `"final"` (`direction: "higher"`) para arrancar con **tablero limpio** (el score cambio de escala respecto de "Mecano" y de la primera version de supervivencia). La landing lo lee via `scoring.variants[0]` sin selector (una sola variante).
+- Solo: `endGame()` llama `hud.showRanking("typing-race", encodeScore(frases, ppm), "final")`. Mejor local en `final-sentence:best` = **frases** (no el score codificado).
 
-## Non-obvious decisions
+## Modo sala (multiplayer)
 
-- **Word pool has no accents or ñ** so the game is fair across keyboard layouts; typing an accented character would otherwise be impossible on some layouts.
-- **Space is the only word delimiter** — a word is not auto-submitted when it matches, so the player controls the rhythm. A space with an empty buffer is ignored (no skipping).
-- **Only single-character keys type** (`e.key.length === 1`); modifier combos (Ctrl/Meta/Alt) are ignored so shortcuts still work.
-- **Live WPM needs ~1s of elapsed time** before it reads non-zero (avoids a divide-by-zero / absurd spike at the very start).
-- **Default scoring (`direction: "higher"`)**, so `meta.ts` omits `export const scoring` per the root convention. `endGame()` submits the WPM via `hud.showRanking("typing-race", wpm)`.
+Cableado al modo party compartido: `initRoomMode("typing-race", { getScore: () => encodeScore(frases, liveWpm()), onStart: () => beginCountdown() })`. Con `?room=` la condena reporta el score codificado a la sala (placement por frases y luego ppm), el Enter-para-reintentar queda bloqueado (una condena por ronda) y todos arrancan juntos via `onStart`. El parcial por timeout de sala es el score codificado hasta el momento.
 
-## Room mode (multiplayer)
+**Progreso en vivo del resto** (`TypingChannel`): en sala, cada cliente emite su progreso `{ frases, balas, muerto }` por broadcast (al completar frase, al morir y cada ~2s de heartbeat) y muestra un panel lateral (`fs-live`) con todos los jugadores ordenados por frases, resaltando el propio y marcando a los caidos. Es efimero (no toca la DB) y solo se activa con `?room=` (`hud.enableLivePanel()`).
 
-Wired to the shared party mode: the constructor calls `initRoomMode("typing-race", { getScore: () => this.liveWpm(), onStart: () => this.beginCountdown() })`. With `?room=` in the URL, `endGame()` reports the WPM to the room instead of the global ranking, the game-over Enter-to-restart is blocked (one run per round), and every player's run auto-starts together via `onStart`. The timeout partial is the live WPM of what has been typed so far.
+## Decisiones no obvias
+
+- **Frases sin tildes, enie ni signos**, en minusculas: cualquier teclado puede escribirlas y el modelo de tecleo es un simple char-a-char (mismo criterio que el pool de palabras anterior). Gotcha historico: un espacio duro (U+00A0) en el texto rompe el match contra la barra espaciadora (que envia U+0020) — mantener espacios normales.
+- **Modelo estricto sin backspace**: liga precision con peligro (cada error ya cargo su bala; no se puede "des-errar") y evita manejar buffer/borrado. El caret vive en `fs-char--current`.
+- **La ruleta se dramatiza con timeouts** (`TRIGGER_SUSPENSE_MS` / `DEATH_HOLD_MS` / `SURVIVE_HOLD_MS`), no en el frame loop; el `update()` solo maneja countdown y el timer de `playing`.
+- **El battle royale es ambiente**, no red real: los presos que caen son un decaimiento local con sonido. El multiplayer de verdad es el modo sala (por rondas), no un BR en vivo.

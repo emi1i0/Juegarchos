@@ -4,7 +4,7 @@ import type { GameScoring } from "../../shared/scoring-core";
 export const meta: GameEntry = {
   id: "car-race",
   title: "Neon Drift",
-  description: "Carrera 2D en circuitos neón: 5 pistas, mapa aleatorio y los autos de todos los jugadores en vivo.",
+  description: "Carrera 2D de drift: 6 circuitos (Mónaco, Shanghái, Silverstone y más) con boosts, conos y barreras, ranking por pista y salas online.",
   path: "/games/car-race/",
   accent: "#00f0ff",
   category: "Carreras",
@@ -13,6 +13,17 @@ export const meta: GameEntry = {
 
 export const scoring: GameScoring = {
   direction: "lower",
+  // Un ranking independiente por circuito (variante = id de la pista).
+  variants: ["monaco", "shanghai", "silverstone", "red-dune", "glacier-loop", "magma-eight"],
+  variantLabel: (v) =>
+    ({
+      monaco: "Mónaco",
+      shanghai: "Shanghái",
+      silverstone: "Silverstone",
+      "red-dune": "Duna Roja",
+      "glacier-loop": "Glaciar",
+      "magma-eight": "Volcán",
+    })[v] ?? v,
   format: (n) => {
     const m = Math.floor(n / 60000);
     const s = Math.floor((n % 60000) / 1000);

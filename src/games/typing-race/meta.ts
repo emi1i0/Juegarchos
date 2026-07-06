@@ -1,15 +1,30 @@
 import type { GameEntry } from "../../games";
+import type { GameScoring } from "../../shared/scoring-core";
+import { decodeScore } from "./game/constants";
 
 export const meta: GameEntry = {
   id: "typing-race",
-  title: "Mecano",
+  title: "Final Sentence",
   description:
-    "Juego de mecanografia: escribi la mayor cantidad de palabras en 30 segundos. El puntaje es tu velocidad en palabras por minuto.",
+    "Thriller de mecanografia: un revolver en la sien y cada error carga una bala. Escribi las frases sin fallar y sobrevivi la ruleta. Solo uno queda en pie.",
   path: "/games/typing-race/",
-  accent: "#a5b4fc",
+  accent: "#c1121f",
   category: "Reflejos",
   order: 270,
 };
 
-// Scoring is the default { direction: "higher" } (more PPM is better), so no
-// `export const scoring` is needed here.
+/**
+ * Puntaje codificado = frases superadas (primario) + ppm (desempate), ver
+ * `encodeScore`. Asi el ranking (global y de sala) ordena primero por frases y
+ * despues por velocidad. Variante propia ("final") para arrancar con un tablero
+ * limpio (el score cambio de escala respecto de "Mecano" y de la version previa).
+ */
+export const scoring: GameScoring = {
+  direction: "higher",
+  variants: ["final"],
+  variantLabel: () => "Supervivencia",
+  format: (n) => {
+    const { frases, ppm } = decodeScore(n);
+    return `${frases} ${frases === 1 ? "frase" : "frases"} · ${ppm} ppm`;
+  },
+};
