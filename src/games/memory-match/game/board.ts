@@ -59,13 +59,25 @@ export function shuffledCards(pairs: number): number[] {
   return cards;
 }
 
-export function createState(pairs: number, turnOrder: string[]): MemoryState {
+/** Copia mezclada (Fisher-Yates) de un arreglo. */
+function shuffled<T>(items: T[]): T[] {
+  const out = items.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+export function createState(pairs: number, players: string[]): MemoryState {
   return {
     cards: shuffledCards(pairs),
     matchedBy: new Array<string | null>(pairs * 2).fill(null),
     flipped: [],
     turn: 0,
-    turnOrder,
+    // Orden de turnos al azar (no por joined_at). Solo el host crea el estado y
+    // se persiste, asi que todos los clientes adoptan el mismo orden barajado.
+    turnOrder: shuffled(players),
     reveal: null,
     seq: 0,
   };
