@@ -5,6 +5,7 @@ export const meta: GameEntry = {
   title: "Bounce Rush",
   description: "Corre hacia el horizonte saltando solo entre plataformas y cambia de carril a tiempo para no caer al vacío.",
   path: "/games/jump-ball/",
+  controls: "Flechas o A/D, o tocá izquierda y derecha, para cambiar de carril.",
   accent: "#ff8a3d",
   category: "Arcade",
   order: 50,

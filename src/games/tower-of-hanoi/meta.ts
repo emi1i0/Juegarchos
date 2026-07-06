@@ -6,6 +6,7 @@ export const meta: GameEntry = {
   title: "Torres de Hanoi",
   description: "Mové la torre de discos a la última varilla en la menor cantidad de movimientos.",
   path: "/games/tower-of-hanoi/",
+  controls: "Clic o toque para elegir el disco y la varilla de destino.",
   accent: "#f5a623",
   category: "Puzzle",
   order: 280,

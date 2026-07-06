@@ -11,7 +11,7 @@
 create table if not exists public.rooms (
   code          text primary key,                 -- 6 chars, alfabeto A-Z2-9 sin ambiguos (sin O/0/I/1)
   host          text not null,                    -- nickname del anfitrion
-  status        text not null default 'lobby',    -- lobby|playing|results|voting|time_voting|finished
+  status        text not null default 'lobby',    -- lobby|briefing|playing|results|voting|time_voting|finished
   settings      jsonb not null default '{}',      -- { totalRounds, playlist: string[]|null, roundTimeLimitSec, timeVote }
   current_round int  not null default 0,
   current_game  text,
@@ -20,14 +20,14 @@ create table if not exists public.rooms (
   created_at    timestamptz not null default now(),
   constraint code_format check (code ~ '^[A-Z2-9]{6}$'),
   constraint host_len    check (char_length(host) between 1 and 12),
-  constraint status_ok   check (status in ('lobby','playing','results','voting','time_voting','finished'))
+  constraint status_ok   check (status in ('lobby','briefing','playing','results','voting','time_voting','finished'))
 );
 
 -- Migracion idempotente del CHECK de status para salas ya creadas (agrega
--- 'time_voting'). create table ... if not exists no toca tablas existentes.
+-- 'briefing' y 'time_voting'). create table ... if not exists no toca tablas existentes.
 alter table public.rooms drop constraint if exists status_ok;
 alter table public.rooms add constraint status_ok
-  check (status in ('lobby','playing','results','voting','time_voting','finished'));
+  check (status in ('lobby','briefing','playing','results','voting','time_voting','finished'));
 
 -- Jugadores registrados en cada sala. El upsert sobre la PK es el rejoin.
 create table if not exists public.room_players (

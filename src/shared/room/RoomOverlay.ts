@@ -90,6 +90,15 @@ const CSS = `
 .mg-room__btn--primary { background: #111; color: #efeee6; }
 .mg-room__btn--primary:hover { background: #00f0ff; color: #111; }
 .mg-room__hint { font-size: 12px; font-weight: 500; color: #6f6d5e; margin-top: 14px; line-height: 1.5; }
+.mg-room__controls {
+  text-align: left; background: #ffffff; border: 2px solid rgba(17, 17, 17, 0.14);
+  border-radius: 12px; padding: 12px 14px; margin: 0 0 16px;
+}
+.mg-room__controls-label { font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #0091a6; margin-bottom: 5px; }
+.mg-room__controls-text { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.mg-room__ready-count { font-size: 12px; font-weight: 700; color: #6f6d5e; margin-top: 12px; font-variant-numeric: tabular-nums; }
+.mg-room__btn:disabled { cursor: default; background: #0a9d54; color: #efeee6; border-color: #0a9d54; opacity: 1; }
+.mg-room__btn:disabled:hover { background: #0a9d54; color: #efeee6; }
 .mg-room__winner {
   display: inline-block; margin-bottom: 18px; padding: 9px 20px; border-radius: 999px;
   background: #111; color: #efeee6; font-size: 15px; font-weight: 800; letter-spacing: 0.3px;
@@ -158,6 +167,11 @@ export class RoomOverlay {
   private voteLastCounts: Record<string, number> = {};
   private voteLastServerMine: string | null = null;
 
+  // ── Briefing: firma + refs para actualizar el boton "Listo" y el contador
+  // in-place (misma razon que la votacion: no reconstruir el DOM en cada sync).
+  private briefSig: string | null = null;
+  private briefEls: { btn: HTMLButtonElement; count: HTMLDivElement } | null = null;
+
   constructor() {
     ensureStyles();
 
@@ -215,6 +229,8 @@ export class RoomOverlay {
     this.voteSig = null;
     this.voteEls = null;
     this.voteOptimisticMine = null;
+    this.briefSig = null;
+    this.briefEls = null;
   }
 
   /**
@@ -386,6 +402,80 @@ export class RoomOverlay {
     } else if (opts.waitingText) {
       this.addHint(opts.waitingText);
     }
+  }
+
+  /**
+   * Briefing previo a la ronda: de que va el juego + controles, con un boton
+   * "Listo" y un contador de listos. Idempotente por ronda (se re-llama en cada
+   * sync/tick): si ya esta montado para la misma ronda solo refresca el boton y
+   * el contador, sin reconstruir el DOM (evita el titileo y no borra el countdown).
+   */
+  showBriefing(opts: {
+    round: number;
+    roundNo: number;
+    totalRounds: number;
+    gameTitle: string;
+    description: string;
+    controls: string;
+    readyCount: number;
+    totalPlayers: number;
+    iAmReady: boolean;
+    onReady: () => void;
+  }): void {
+    const sig = `${opts.round}:${opts.gameTitle}`;
+    if (this.briefSig === sig && this.briefEls && this.root.style.display !== "none") {
+      this.updateBriefing(opts.readyCount, opts.totalPlayers, opts.iAmReady);
+      return;
+    }
+
+    this.show();
+    this.briefSig = sig;
+    this.addKicker(`Ronda ${opts.roundNo}/${opts.totalRounds} - proximo juego`);
+    this.addTitle(opts.gameTitle);
+    if (opts.description) this.addSubtitle(opts.description);
+
+    if (opts.controls) {
+      const box = document.createElement("div");
+      box.className = "mg-room__controls";
+      const label = document.createElement("div");
+      label.className = "mg-room__controls-label";
+      label.textContent = "Controles";
+      const text = document.createElement("div");
+      text.className = "mg-room__controls-text";
+      text.textContent = opts.controls;
+      box.append(label, text);
+      this.boxEl.append(box);
+    }
+
+    this.addTime();
+
+    const btn = this.makeButton("Listo", () => {
+      // Optimista: se marca listo al toque, sin esperar el round-trip a la DB.
+      this.markReady();
+      opts.onReady();
+    }, "primary");
+    this.boxEl.append(btn);
+
+    const count = document.createElement("div");
+    count.className = "mg-room__ready-count";
+    this.boxEl.append(count);
+
+    this.briefEls = { btn, count };
+    this.updateBriefing(opts.readyCount, opts.totalPlayers, opts.iAmReady);
+  }
+
+  /** Marca el boton "Listo" como confirmado (optimista, antes de la DB). */
+  private markReady(): void {
+    if (!this.briefEls) return;
+    this.briefEls.btn.disabled = true;
+    this.briefEls.btn.textContent = "Listo";
+  }
+
+  /** Refresca boton + contador del briefing sin tocar el resto del DOM. */
+  private updateBriefing(readyCount: number, totalPlayers: number, iAmReady: boolean): void {
+    if (!this.briefEls) return;
+    if (iAmReady) this.markReady();
+    this.briefEls.count.textContent = `${readyCount}/${totalPlayers} listos`;
   }
 
   /** Votacion (proximo juego o tope de tiempo). */

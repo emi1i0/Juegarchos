@@ -5,6 +5,7 @@ export const meta: GameEntry = {
   title: "Dunk Shot",
   description: "Estira, apunta y encesta la pelota en el aro siguiente encadenando canastas perfectas.",
   path: "/games/dunk-shot/",
+  controls: "Arrastrá para estirar, apuntá y soltá para encestar.",
   accent: "#ff7a45",
   category: "Precisión",
   order: 130,

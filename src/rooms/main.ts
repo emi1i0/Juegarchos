@@ -1,5 +1,5 @@
 import "./style.css";
-import { games, coverUrl } from "../games";
+import { roomGames, coverUrl } from "../games";
 import { isLeaderboardEnabled } from "../shared/supabase";
 import { getNickname, setNickname, NICKNAME_MAX } from "../shared/nickname";
 import {
@@ -8,17 +8,14 @@ import {
   joinRoom,
   kickPlayer,
   sanitizeCode,
-  startRound,
-  startTimeVote,
+  startBriefing,
   updateSettings,
 } from "../shared/room/api";
 import { RoomChannel } from "../shared/room/channel";
 import {
-  computeRoundDeadline,
+  BRIEFING_SECONDS,
   randomGameId,
   roomGameUrl,
-  timeVoteOptionIds,
-  VOTE_SECONDS,
 } from "../shared/room/roomMode";
 import {
   DEFAULT_ROUND_TIME_LIMIT,
@@ -349,8 +346,59 @@ function buildSettingsForm(
   const playlistLabel = document.createElement("div");
   playlistLabel.className = "panel__label";
   playlistLabel.textContent = "Elegir los juegos (opcional)";
+
+  // Buscador + filtros por categoria de la grilla (solo esconden/muestran; los
+  // juegos ya elegidos siguen en el playlist aunque el filtro los oculte).
+  let playlistCategory = "Todos";
+  let playlistTerm = "";
+
+  const playlistSearch = document.createElement("input");
+  playlistSearch.type = "search";
+  playlistSearch.className = "input playlist-search";
+  playlistSearch.placeholder = "Buscar juego";
+  playlistSearch.autocomplete = "off";
+
+  const playlistFilters = document.createElement("div");
+  playlistFilters.className = "choices playlist-cats";
+  const playlistCats = ["Todos", ...new Set(roomGames.map((g) => g.category))];
+  for (const cat of playlistCats) {
+    const pill = document.createElement("button");
+    pill.className = "choice" + (cat === playlistCategory ? " is-active" : "");
+    pill.type = "button";
+    pill.textContent = cat;
+    pill.addEventListener("click", () => {
+      playlistCategory = cat;
+      playlistFilters.querySelectorAll(".choice").forEach((b) => b.classList.remove("is-active"));
+      pill.classList.add("is-active");
+      applyPlaylistFilter();
+    });
+    playlistFilters.append(pill);
+  }
+
   const playlistGrid = document.createElement("div");
   playlistGrid.className = "playlist";
+
+  const playlistEmpty = document.createElement("p");
+  playlistEmpty.className = "hint playlist-empty";
+  playlistEmpty.textContent = "Ningun juego coincide con la busqueda.";
+  playlistEmpty.style.display = "none";
+
+  const applyPlaylistFilter = (): void => {
+    let visible = 0;
+    playlistGrid.querySelectorAll<HTMLButtonElement>(".playlist__item").forEach((btn) => {
+      const matchesCat = playlistCategory === "Todos" || btn.dataset.category === playlistCategory;
+      const matchesTerm = !playlistTerm || (btn.dataset.search ?? "").includes(playlistTerm);
+      const show = matchesCat && matchesTerm;
+      btn.style.display = show ? "" : "none";
+      if (show) visible++;
+    });
+    playlistEmpty.style.display = visible === 0 ? "" : "none";
+  };
+
+  playlistSearch.addEventListener("input", () => {
+    playlistTerm = playlistSearch.value.trim().toLowerCase();
+    applyPlaylistFilter();
+  });
 
   const refreshPlaylistUI = (): void => {
     const atCap = playlist.length >= totalRounds;
@@ -371,11 +419,13 @@ function buildSettingsForm(
         : "Elegir los juegos (opcional)";
   };
 
-  for (const game of games) {
+  for (const game of roomGames) {
     const btn = document.createElement("button");
     btn.className = "playlist__item";
     btn.type = "button";
     btn.dataset.id = game.id;
+    btn.dataset.category = game.category;
+    btn.dataset.search = `${game.title} ${game.description}`.toLowerCase();
     if (game.accent) btn.style.setProperty("--game-accent", game.accent);
     btn.innerHTML = `
       <span class="playlist__cover">
@@ -406,6 +456,7 @@ function buildSettingsForm(
     playlistGrid.append(btn);
   }
   refreshPlaylistUI();
+  applyPlaylistFilter();
 
   const playlistHint = document.createElement("p");
   playlistHint.className = "hint";
@@ -420,7 +471,10 @@ function buildSettingsForm(
     timeSelector,
     timeVoteHint,
     playlistLabel,
+    playlistSearch,
+    playlistFilters,
     playlistGrid,
+    playlistEmpty,
     playlistHint,
   );
   return wrap;
@@ -733,17 +787,15 @@ function renderLobby(code: string, player: string): void {
       // no haber terminado el round-trip).
       if (isHost && hostSettings) await updateSettings(code, hostSettings);
       const firstGame = settings.playlist ? settings.playlist[0] : randomGameId();
-      // Con votacion de tiempo habilitada, la primera ronda tambien vota el tope:
-      // se pasa a 'time_voting' y la votacion corre ya en la pagina del juego.
-      const ok = settings.timeVote
-        ? await startTimeVote(
-            code,
-            1,
-            firstGame,
-            timeVoteOptionIds(),
-            new Date(Date.now() + VOTE_SECONDS * 1000),
-          )
-        : await startRound(code, 1, firstGame, computeRoundDeadline(settings.roundTimeLimitSec));
+      // La primera ronda arranca por su briefing (de que va el juego + controles):
+      // se pasa a 'briefing' y todo el resto (votacion de tiempo si esta activa, o
+      // el arranque de la partida) corre ya en la pagina del juego.
+      const ok = await startBriefing(
+        code,
+        1,
+        firstGame,
+        new Date(Date.now() + BRIEFING_SECONDS * 1000),
+      );
       if (!ok) {
         starting = false;
         render();

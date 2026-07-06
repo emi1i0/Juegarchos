@@ -5,6 +5,7 @@ export const meta: GameEntry = {
   title: "Flappy Bird",
   description: "Aletea para mantener al pájaro en el aire y cruza la mayor cantidad de tubos sin chocar.",
   path: "/games/flappy-bird/",
+  controls: "Espacio, clic o toque para aletear.",
   accent: "#4ec0e6",
   category: "Arcade",
   order: 20,

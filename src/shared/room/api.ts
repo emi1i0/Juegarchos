@@ -197,6 +197,47 @@ export async function castVote(
 
 // ---------- Mutaciones de host ----------
 
+/**
+ * Abre el briefing previo a una ronda: fija el juego y pasa a 'briefing' con un
+ * deadline corto (tope de lectura). Ahi cada jugador lee de que va el juego y sus
+ * controles, y marca "Listo" (una fila en room_votes con game_id='ready'). El
+ * host cierra la fase al vencer el tope o cuando todos los presentes estan listos,
+ * y recien entonces arranca a jugar (o abre la votacion de tiempo si esta activa).
+ */
+export async function startBriefing(
+  code: string,
+  roundNo: number,
+  gameId: string,
+  deadline: Date,
+): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+
+  const { error: roundError } = await supabase
+    .from("room_rounds")
+    .upsert({ code, round_no: roundNo, game_id: gameId });
+  if (roundError) {
+    warn("startBriefing", roundError.message);
+    return false;
+  }
+
+  const { error } = await supabase
+    .from("rooms")
+    .update({
+      status: "briefing",
+      current_round: roundNo,
+      current_game: gameId,
+      vote_options: null,
+      deadline: deadline.toISOString(),
+    })
+    .eq("code", code);
+  if (error) {
+    warn("startBriefing", error.message);
+    return false;
+  }
+  return true;
+}
+
 /** Arranca la ronda roundNo con el juego dado y su deadline (null = sin tope). */
 export async function startRound(
   code: string,

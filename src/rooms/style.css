@@ -409,6 +409,17 @@ a {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
+/* ---------- Buscador + filtros de la grilla de juegos ---------- */
+.playlist-search {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.playlist-cats {
+  margin-bottom: 14px;
+}
+
 /* ---------- Hint / error ---------- */
 .hint {
   font-size: 12px;

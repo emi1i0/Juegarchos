@@ -1,6 +1,7 @@
 /** Estado de una sala a lo largo de su vida. */
 export type RoomStatus =
   | "lobby"
+  | "briefing"
   | "playing"
   | "results"
   | "voting"

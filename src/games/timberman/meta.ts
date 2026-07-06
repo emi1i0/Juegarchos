@@ -5,6 +5,7 @@ export const meta: GameEntry = {
   title: "Timber!",
   description: "Talá el árbol lo más rápido posible esquivando las ramas de cada lado.",
   path: "/games/timberman/",
+  controls: "Flechas o A/D, o tocá izquierda y derecha, para talar esquivando las ramas.",
   accent: "#e8a13a",
   category: "Reflejos",
   order: 300,

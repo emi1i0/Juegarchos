@@ -39,3 +39,6 @@ docs/
 # Blender script bytecode
 __pycache__/
 *.pyc
+
+# Salidas de los scripts de QA (capturas, reportes)
+artifacts/

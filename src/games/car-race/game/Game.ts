@@ -190,8 +190,12 @@ export class Game {
     this.setupTrack(trackIdx, obstacleSeed);
 
     if (this.room) {
-      // En sala, antes de largar se vota el circuito entre todos.
-      this.startMapVote();
+      // En sala, la carrera (empezando por la votacion de circuito) no arranca
+      // hasta que la sala pasa a 'playing': antes esta el briefing (de que va el
+      // juego + controles) y, si corresponde, el voto de tiempo, ambos cubiertos
+      // por el overlay de RoomMode. El estado 'loading' deja el mapa por defecto
+      // de fondo sin correr nada; el loop larga la votacion al detectar 'playing'.
+      this.state = "loading";
     } else {
       this.state = "ready";
       this.hud.showStart(this.track.def.name, this.track.def.laps, this.bestText());
@@ -430,7 +434,13 @@ export class Game {
   }
 
   private update(dt: number): void {
-    if (this.state === "loading") return;
+    if (this.state === "loading") {
+      // En sala, largar la votacion de circuito recien cuando la sala arranca a
+      // jugar (tras el briefing / voto de tiempo). Fuera de sala nunca queda en
+      // 'loading' (boot pasa directo a 'ready').
+      if (this.room && this.room.status() === "playing") this.startMapVote();
+      return;
+    }
 
     if (this.state === "mapvote") {
       this.refreshVoteUi();

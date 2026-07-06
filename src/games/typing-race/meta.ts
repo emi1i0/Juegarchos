@@ -8,6 +8,7 @@ export const meta: GameEntry = {
   description:
     "Thriller de mecanografia: un revolver en la sien y cada error carga una bala. Escribi las frases sin fallar y sobrevivi la ruleta. Solo uno queda en pie.",
   path: "/games/typing-race/",
+  controls: "Escribí las frases con el teclado, sin errores.",
   accent: "#c1121f",
   category: "Reflejos",
   order: 270,

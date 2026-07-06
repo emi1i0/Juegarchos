@@ -6,6 +6,7 @@ export const meta: GameEntry = {
   title: "Lights Out",
   description: "Apaga todas las luces: cada toque invierte una celda y sus vecinas.",
   path: "/games/lights-out/",
+  controls: "Clic o toque en una celda para invertirla junto a sus vecinas.",
   accent: "#ffd23f",
   category: "Puzzle",
   order: 290,

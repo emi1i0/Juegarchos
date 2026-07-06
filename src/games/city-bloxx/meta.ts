@@ -5,6 +5,7 @@ export const meta: GameEntry = {
   title: "Skyline",
   description: "Suelta cada piso desde la grúa en el momento justo y levanta el rascacielos más alto sin que el edificio pierda el equilibrio.",
   path: "/games/city-bloxx/",
+  controls: "Espacio, clic o toque para soltar cada piso en el momento justo.",
   accent: "#d9843f",
   category: "Precisión",
   order: 70,

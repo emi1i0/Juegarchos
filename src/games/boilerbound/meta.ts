@@ -8,6 +8,7 @@ export const meta: GameEntry = {
   description:
     "Esquivá los chorros de vapor que erupcionan del piso en patrones de jefe. Corré, saltá, colgate de las paredes y usá el dash para aguantar lo máximo posible.",
   path: "/games/boilerbound/",
+  controls: "Flechas o A/D para correr, espacio para saltar y colgarte de las paredes, y dash para esquivar el vapor.",
   accent: "#ff8a3d",
   category: "Arcade",
   order: 290,

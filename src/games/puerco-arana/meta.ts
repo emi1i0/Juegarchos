@@ -5,6 +5,7 @@ export const meta: GameEntry = {
   title: "Puerco Araña",
   description: "Lanzá la telaraña, columpiate entre los edificios con impulso de péndulo y llegá lo más lejos que puedas.",
   path: "/games/puerco-arana/",
+  controls: "Mantené clic, espacio o toque para lanzar la telaraña y soltá para columpiarte.",
   accent: "#ff5d8f",
   category: "Arcade",
   order: 330,

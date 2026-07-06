@@ -6,6 +6,7 @@ export const meta: GameEntry = {
   title: "Numerix",
   description: "Ordena los numeros deslizando filas o columnas completas hacia el espacio vacio.",
   path: "/games/sliding-puzzle/",
+  controls: "Flechas, clic o deslizá para mover la fila o columna hacia el hueco.",
   accent: "#0ff8ff",
   category: "Puzzle",
   order: 80,

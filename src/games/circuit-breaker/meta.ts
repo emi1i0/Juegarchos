@@ -8,6 +8,7 @@ export const meta: GameEntry = {
   description:
     "Lleva la senal por el circuito hasta el conector destino sin tocar las paredes: si chocas, volves al inicio. Inspirado en el Circuit Breaker de GTA Online.",
   path: "/games/circuit-breaker/",
+  controls: "Avanza sola; girá con las flechas o WASD para no tocar las paredes.",
   accent: "#33e39a",
   category: "Precisión",
   order: 320,
