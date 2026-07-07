@@ -1,61 +1,75 @@
-# Bomba Palabra — Direccion de arte: "Prensa de papel"
+# Bomba Palabra — Direccion de arte: "Mesa de bomba"
 
-Bomba Palabra no es un juego neon ni de fuego: es un **juego de palabras**, y su
-estetica es la de la palabra impresa. El lenguaje es el de la landing y el
-`RoomOverlay`: **papel crema, tinta, pastillas de borde firme**. Editorial,
-limpio, tipografico. La tension no la pone el color ni el brillo; la pone el
-**reloj** y la **letra grande**.
+Bomba Palabra se ve como una **ronda alrededor de una bomba**: los jugadores
+forman un circulo y en el centro late la bomba con el fragmento a completar. Es el
+lenguaje clasico de BombParty. Fondo oscuro y calido de mesa, avatares genericos,
+y una sola cosa encendida a la vez: **el jugador al que apunta la bomba**.
 
 ## Principio
 
-**La tipografia es el juego.** Todo lo que importa se lee: el fragmento a
-completar es el objeto mas grande de la pantalla, y la palabra que el jugador
-escribe aparece con el mismo peso. El resto (jugadores, vidas, mecha) es
-mobiliario alrededor de ese acto de leer y escribir. Si algo no ayuda a leer el
-reto o a sentir el tiempo, sobra.
+**La atencion es un foco.** En cada turno hay un unico protagonista: el jugador
+de turno. La bomba lo apunta, su nombre se enciende, y lo que escribe aparece
+debajo de su avatar en vivo. Todo lo demas (los otros jugadores, sus vidas, sus
+ultimas palabras) queda en penumbra alrededor. El diseno existe para que, de un
+vistazo, sepas **de quien es el turno y que esta escribiendo**.
 
-## Paleta
+## Layout
 
-Hardcodeada, la misma familia que la landing (no depende de variables externas):
+- **Circulo de jugadores** alrededor de un centro. Se reparten por angulo (uno
+  arriba, el resto girando), soportando de 2 a **8** jugadores (el tope de la
+  sala) sin solaparse.
+- **La bomba en el centro**, un disco oscuro con el **fragmento** (silaba/combo)
+  en mayusculas. Una **flecha/chispa** amarilla sale de la bomba y apunta al
+  jugador de turno; gira hacia el que corresponde.
+- **Cada jugador** es una columna: **nombre arriba**, **avatar generico** (una
+  silueta violeta sobre una placa gris — nunca fotos ni imagenes propias), y
+  **debajo lo que escribe**. Encima del avatar, su estado: corazones (vidas) o una
+  calavera si quedo afuera.
+- **No hay caja de texto.** El jugador de turno simplemente escribe y el texto
+  aparece debajo de su avatar. (En movil un input invisible summonea el teclado,
+  pero visualmente no hay caja: el texto se lee bajo el avatar.)
 
-- **Papel** `#f4ecd8` — fondo. Un crema calido, no blanco.
-- **Tinta** `#1c1a17` — texto, bordes, marcas. Casi negro, con temperatura.
-- **Tinta suave** `#6b6455` — texto secundario, etiquetas, contadores.
-- **Sello** `#c0392b` — un unico rojo de "sello de goma" para el peligro: la
-  mecha cuando queda poco tiempo, la palabra rechazada, la vida perdida. Se usa
-  con avaricia; es el unico acento.
-- **Verde palabra** `#2e7d5b` — confirmacion de palabra aceptada. Segundo acento,
-  igual de contenido.
+## Paleta (de la referencia)
 
-Nada de gradientes de neon ni glows. Sombras minimas y duras (offset solido tipo
-sello), no difusas.
+- **Mesa** `#3a3330` — fondo, un marron/gris calido y oscuro. Degrade sutil al
+  centro para dar profundidad de foco.
+- **Nombre** `#f5f2ee` — blanco calido, peso alto.
+- **Placa de avatar** `#8a8a8a` sobre la que va la **silueta** `#6a5f86` (violeta
+  apagado), el avatar generico universal.
+- **Turno** `#46d16a` — el nombre del jugador de turno se pone verde. Unico color
+  de "estas vos / es su turno".
+- **Chispa/flecha** `#f5c518` — el amarillo de la mecha encendida que apunta.
+- **Vidas** corazones rojos `#ff5a5f`; **eliminado** calavera y nombre tachado,
+  atenuado. **Desconectado** en cursiva/gris (sigue en la ronda, la mecha lo
+  castiga como AFK).
+- **Peligro de mecha** `#e23b3b` — la mecha/fuse vira a rojo en el ultimo tramo.
 
 ## Vocabulario visual
 
-- **Bordes tinta de 2-3px, esquinas apenas redondeadas** (pastillas, cartas), como
-  el `RoomOverlay`. Todo se siente impreso y recortado.
-- **El fragmento** va en una tarjeta central, mayusculas, tracking amplio, la
-  pieza tipografica dominante.
-- **La mecha = una regla de tiempo**, no una llama: una barra horizontal de tinta
-  que se consume de izquierda a derecha; vira al rojo sello en el ultimo tramo. Es
-  literal y legible, coherente con "el tiempo es lo que aprieta, no el fuego".
-- **Las vidas** son marcas de tinta simples (tres trazos / puntos) que se tachan
-  al perderse, no corazones ilustrados.
-- **Los jugadores** son una fila de nombres en pastillas; el de turno se resalta
-  invirtiendo tinta/papel (fondo tinta, texto papel), como un renglon subrayado.
+- **Avatar generico** identico para todos: placa gris con silueta violeta. La
+  identidad la da el **nombre**, no una imagen. Es deliberado (rapido, parejo, sin
+  assets).
+- **Corazones y calavera** como marcas claras y legibles arriba del avatar, no
+  ilustraciones recargadas.
+- **La bomba** es un disco simple con el fragmento; la tension la pone la
+  **flecha que apunta** y el **fuse** que se consume, no una ilustracion de
+  dinamita.
+- **Texto en vivo** debajo del avatar: lo que se teclea se ve al instante (propio
+  y ajeno, via el relay del server). La ultima palabra aceptada queda debajo del
+  avatar hasta el proximo turno de ese jugador.
 
 ## Movimiento
 
-Sobrio y mecanico, de imprenta: la palabra aceptada "sella" (un pequeno punch +
-asentar), el turno pasa con un desplazamiento corto, la mecha corre lineal. Sin
-rebotes elasticos ni particulas. El unico momento intenso es la explosion de la
-mecha: un golpe seco de rojo sello, breve, y sigue.
+Sobrio y con foco: al pasar el turno, la flecha **gira** hacia el nuevo jugador y
+su nombre se enciende. La palabra aceptada da un pequeno "sello"; el rechazo
+sacude el avatar. La explosion de la mecha es un golpe seco de rojo. Nada de
+rebotes elasticos ni particulas: la energia esta en el foco que salta de jugador
+en jugador.
 
 ## Que evitar
 
-- Neon, glows, degradados saturados (ese es el lenguaje de los otros juegos, no
-  de este).
-- Iconografia de dinamita/mecha encendida realista: la bomba es un concepto, no
-  una ilustracion protagonista. El reloj manda.
-- Tipografia decorativa. Una sans de buen peso y una serif/mono para el fragmento
-  si aporta caracter, nada mas.
+- Fotos / avatares personalizados: rompe la lectura pareja y mete assets. Siempre
+  la silueta generica.
+- Una caja de input visible: se escribe directo, el texto vive bajo el avatar.
+- Neon / glows saturados: la mesa es oscura y calida, no arcade. El unico color
+  fuerte es el foco (verde del turno, amarillo de la chispa, rojo del peligro).

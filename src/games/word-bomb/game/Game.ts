@@ -35,6 +35,8 @@ export class Game {
   private lastAcceptSeq = 0;
   private fuseTotal = 0;
   private fuseKey = "";
+  /** Ultima palabra aceptada por cada jugador (se muestra bajo su avatar). */
+  private readonly lastWords = new Map<string, string>();
 
   constructor(root: HTMLElement) {
     this.hud = new Hud(root);
@@ -81,6 +83,8 @@ export class Game {
     if (this.state === "countdown" || this.state === "playing") return;
     this.state = "countdown";
     this.lastCountdownIndex = -1;
+    this.lastWords.clear();
+    this.lastAcceptSeq = 0;
     this.connect();
 
     let i = 0;
@@ -137,14 +141,8 @@ export class Game {
     const turnPlayer = s.turn;
     const myTurn = s.phase === "playing" && turnPlayer === me;
 
-    // Sonidos por diff contra el estado anterior.
+    // Sonidos por diff contra el estado anterior (y actualiza las ultimas palabras).
     this.playDiffSounds(s);
-
-    let statusText: string;
-    if (s.phase === "waiting") statusText = "Preparando la ronda...";
-    else if (s.phase === "over") statusText = "Ronda terminada";
-    else if (myTurn) statusText = "TU TURNO";
-    else statusText = turnPlayer ? `TURNO DE ${turnPlayer}` : "";
 
     this.hud.render({
       players: s.players.map((p) => ({
@@ -154,9 +152,9 @@ export class Game {
         connected: p.connected,
         isTurn: s.phase === "playing" && p.nickname === turnPlayer,
         isMe: p.nickname === me,
+        lastWord: this.lastWords.get(p.nickname) ?? "",
       })),
       fragment: s.fragment,
-      statusText,
       myTurn,
       usedCount: s.usedCount,
     });
@@ -173,11 +171,12 @@ export class Game {
   }
 
   private playDiffSounds(s: WbState): void {
-    // Palabra aceptada nueva.
+    // Palabra aceptada nueva: se guarda como ultima de ese jugador y se sella bajo su avatar.
     if (s.lastAccepted && s.lastAccepted.seq > this.lastAcceptSeq) {
       this.lastAcceptSeq = s.lastAccepted.seq;
+      this.lastWords.set(s.lastAccepted.player, s.lastAccepted.word);
       SoundEffects.playAccept();
-      if (s.lastAccepted.player === this.room?.me) this.hud.flashAccept(s.lastAccepted.word);
+      this.hud.flashAccept(s.lastAccepted.player, s.lastAccepted.word);
     }
     if (!this.prev) return;
     // Vida perdida en algun jugador -> exploto la mecha.

@@ -7,35 +7,52 @@ export interface HudPlayer {
   connected: boolean;
   isTurn: boolean;
   isMe: boolean;
+  /** Ultima palabra aceptada por este jugador (se muestra bajo su avatar). */
+  lastWord: string;
 }
 
 export interface PlayView {
   players: HudPlayer[];
   fragment: string | null;
-  statusText: string;
   myTurn: boolean;
   usedCount: number;
 }
 
+/** Avatar generico compartido por todos (silueta violeta sobre placa gris). La
+ *  identidad la da el nombre, no una imagen. Ver DESIGN.md ("Mesa de bomba"). */
+const AVATAR_SVG = `
+  <svg class="wb__avatar-svg" viewBox="0 0 64 64" aria-hidden="true">
+    <circle cx="32" cy="24" r="12"></circle>
+    <path d="M12 56c0-11 9-18 20-18s20 7 20 18z"></path>
+  </svg>`;
+
+/** Radio del circulo de jugadores, como fraccion del semilado de la arena. */
+const RING_RADIUS = 0.37;
+
 /**
- * DOM de Bomba Palabra (estetica "prensa de papel": papel crema, tinta, pastillas
- * y una regla de tiempo, ver DESIGN.md). Renderiza la escena en-juego (fila de
- * jugadores con vidas, tarjeta del fragmento, mecha y el input). Los estados de
- * espera / resultados / tablero final los cubre el `RoomOverlay` compartido por
- * encima.
+ * DOM de Bomba Palabra (estetica "mesa de bomba", ver DESIGN.md): los jugadores
+ * forman un circulo alrededor de la bomba central; cada uno es nombre arriba,
+ * avatar generico, y debajo lo que escribe. La bomba muestra el fragmento y una
+ * flecha apunta al jugador de turno. NO hay caja de texto: un input invisible
+ * captura el tecleo (y summonea el teclado en movil) y el texto se ve bajo el
+ * avatar propio. Los estados de espera / resultados / tablero final los cubre el
+ * `RoomOverlay` compartido por encima.
  */
 export class Hud {
   private readonly stage: HTMLDivElement;
-  private readonly playersEl: HTMLDivElement;
-  private readonly statusEl: HTMLDivElement;
-  private readonly fragmentEl: HTMLDivElement;
+  private readonly arena: HTMLDivElement;
+  private readonly bombFragEl: HTMLDivElement;
   private readonly fuseFill: HTMLDivElement;
-  private readonly form: HTMLFormElement;
+  private readonly pointer: HTMLDivElement;
   private readonly input: HTMLInputElement;
-  private readonly typingEl: HTMLDivElement;
-  private readonly usedEl: HTMLDivElement;
   private readonly overlay: HTMLDivElement;
   private readonly countdownEl: HTMLDivElement;
+
+  /** Celda de palabra por jugador (para actualizar el tipeo sin re-render). */
+  private wordEls = new Map<string, HTMLDivElement>();
+  /** Tarjeta por jugador (para sacudir en el rechazo). */
+  private cardEls = new Map<string, HTMLDivElement>();
+  private me = "";
 
   private fuseRaf = 0;
   private submitCb: (word: string) => void = () => {};
@@ -47,19 +64,16 @@ export class Hud {
     wrap.className = "wb";
     wrap.innerHTML = `
       <div class="wb__stage" hidden>
-        <div class="wb__players"></div>
-        <div class="wb__center">
-          <div class="wb__status"></div>
-          <div class="wb__fragment"></div>
-          <div class="wb__fuse"><div class="wb__fuse-fill"></div></div>
-          <form class="wb__form" autocomplete="off">
-            <input class="wb__input" type="text" inputmode="text" autocapitalize="off"
-                   autocomplete="off" spellcheck="false" maxlength="32"
-                   placeholder="escribi una palabra..." />
-          </form>
-          <div class="wb__typing"></div>
-          <div class="wb__used"></div>
+        <div class="wb__arena">
+          <div class="wb__bomb">
+            <div class="wb__bomb-frag"></div>
+            <div class="wb__fuse"><div class="wb__fuse-fill"></div></div>
+          </div>
+          <div class="wb__pointer" hidden></div>
         </div>
+        <input class="wb__input" type="text" inputmode="text" autocapitalize="off"
+               autocomplete="off" autocorrect="off" spellcheck="false" maxlength="32"
+               aria-label="escribi una palabra" />
       </div>
       <div class="wb__overlay"></div>
       <div class="wb__countdown" hidden></div>
@@ -67,23 +81,30 @@ export class Hud {
     root.appendChild(wrap);
 
     this.stage = wrap.querySelector(".wb__stage")!;
-    this.playersEl = wrap.querySelector(".wb__players")!;
-    this.statusEl = wrap.querySelector(".wb__status")!;
-    this.fragmentEl = wrap.querySelector(".wb__fragment")!;
+    this.arena = wrap.querySelector(".wb__arena")!;
+    this.bombFragEl = wrap.querySelector(".wb__bomb-frag")!;
     this.fuseFill = wrap.querySelector(".wb__fuse-fill")!;
-    this.form = wrap.querySelector(".wb__form")!;
+    this.pointer = wrap.querySelector(".wb__pointer")!;
     this.input = wrap.querySelector(".wb__input")!;
-    this.typingEl = wrap.querySelector(".wb__typing")!;
-    this.usedEl = wrap.querySelector(".wb__used")!;
     this.overlay = wrap.querySelector(".wb__overlay")!;
     this.countdownEl = wrap.querySelector(".wb__countdown")!;
 
-    this.form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const word = this.input.value.trim();
-      if (word) this.submitCb(word);
+    // Enter envia; el texto tipeado se refleja bajo el avatar propio en vivo.
+    this.input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const word = this.input.value.trim();
+        if (word) this.submitCb(word);
+      }
     });
-    this.input.addEventListener("input", () => this.typeCb(this.input.value));
+    this.input.addEventListener("input", () => {
+      this.typeCb(this.input.value);
+      this.setWord(this.me, this.input.value);
+    });
+    // Tocar la arena enfoca el input (summonea el teclado en movil sin caja visible).
+    this.arena.addEventListener("pointerdown", () => {
+      if (!this.input.disabled) this.input.focus();
+    });
   }
 
   onSubmit(cb: (word: string) => void): void {
@@ -127,8 +148,7 @@ export class Hud {
     this.countdownEl.hidden = false;
     this.countdownEl.textContent = text;
     this.countdownEl.classList.remove("is-pop");
-    // reflow para reiniciar la animacion
-    void this.countdownEl.offsetWidth;
+    void this.countdownEl.offsetWidth; // reflow para reiniciar la animacion
     this.countdownEl.classList.add("is-pop");
   }
 
@@ -140,28 +160,68 @@ export class Hud {
   }
 
   render(view: PlayView): void {
-    this.playersEl.innerHTML = "";
-    for (const p of view.players) {
-      const el = document.createElement("div");
-      el.className = "wb__player";
-      if (p.isTurn) el.classList.add("is-turn");
-      if (p.isMe) el.classList.add("is-me");
-      if (!p.alive) el.classList.add("is-out");
-      if (!p.connected) el.classList.add("is-off");
-      const lives = Array.from({ length: 3 }, (_, i) =>
-        `<span class="wb__life${i < p.lives ? "" : " is-lost"}"></span>`,
-      ).join("");
-      el.innerHTML = `<span class="wb__pname">${escapeHtml(p.nickname)}</span><span class="wb__lives">${lives}</span>`;
-      this.playersEl.appendChild(el);
+    this.me = view.players.find((p) => p.isMe)?.nickname ?? this.me;
+
+    // Reconstruye el circulo. Se limpian solo las tarjetas (bomba/pointer quedan).
+    for (const el of this.cardEls.values()) el.remove();
+    this.cardEls.clear();
+    this.wordEls.clear();
+
+    const n = view.players.length;
+    let turnAngle: number | null = null;
+
+    view.players.forEach((p, i) => {
+      const angle = n > 0 ? (i * 360) / n : 0; // 0 = arriba, girando en sentido horario
+      const rad = (angle * Math.PI) / 180;
+      const x = 50 + RING_RADIUS * 100 * Math.sin(rad);
+      const y = 50 - RING_RADIUS * 100 * Math.cos(rad);
+      if (p.isTurn) turnAngle = angle;
+
+      const card = document.createElement("div");
+      card.className = "wb__player";
+      if (p.isTurn) card.classList.add("is-turn");
+      if (p.isMe) card.classList.add("is-me");
+      if (!p.alive) card.classList.add("is-out");
+      if (!p.connected) card.classList.add("is-off");
+      card.style.left = `${x}%`;
+      card.style.top = `${y}%`;
+
+      const badge = p.alive
+        ? `<span class="wb__hearts">${"❤️".repeat(Math.max(0, p.lives))}</span>`
+        : `<span class="wb__skull">\u{1F480}</span>`;
+
+      // La palabra bajo el avatar: el que tiene el turno arranca vacio (se llena
+      // con el tipeo en vivo); el resto muestra su ultima palabra aceptada.
+      const word = p.isTurn ? "" : p.lastWord;
+
+      card.innerHTML = `
+        <div class="wb__pname">${escapeHtml(p.nickname)}</div>
+        <div class="wb__badge">${badge}</div>
+        <div class="wb__avatar">${AVATAR_SVG}</div>
+        <div class="wb__word">${escapeHtml(word)}</div>
+      `;
+      this.arena.appendChild(card);
+      this.cardEls.set(p.nickname, card);
+      this.wordEls.set(p.nickname, card.querySelector<HTMLDivElement>(".wb__word")!);
+    });
+
+    // Bomba: fragmento + flecha girando hacia el jugador de turno.
+    this.bombFragEl.textContent = view.fragment ? view.fragment.toUpperCase() : "";
+    if (turnAngle !== null) {
+      this.pointer.hidden = false;
+      this.pointer.style.transform = `translate(-50%, -50%) rotate(${turnAngle}deg) translateY(-70px)`;
+    } else {
+      this.pointer.hidden = true;
     }
 
-    this.statusEl.textContent = view.statusText;
-    this.statusEl.classList.toggle("is-mine", view.myTurn);
-    this.fragmentEl.textContent = view.fragment ? view.fragment.toUpperCase() : "";
-    this.usedEl.textContent = view.usedCount > 0 ? `${view.usedCount} palabras` : "";
-
     this.setInputEnabled(view.myTurn);
-    if (!view.myTurn) this.typingEl.textContent = "";
+    if (view.myTurn) this.setWord(this.me, this.input.value);
+  }
+
+  /** Actualiza la palabra bajo el avatar de un jugador (tipeo en vivo o aceptada). */
+  private setWord(nickname: string, text: string): void {
+    const el = this.wordEls.get(nickname);
+    if (el) el.textContent = text;
   }
 
   setInputEnabled(on: boolean): void {
@@ -170,43 +230,54 @@ export class Hud {
       this.input.focus();
     } else {
       this.input.value = "";
+      this.input.blur();
     }
   }
 
   clearInput(): void {
     this.input.value = "";
+    this.setWord(this.me, "");
   }
 
   focusInput(): void {
     if (!this.input.disabled) this.input.focus();
   }
 
-  /** Muestra lo que el jugador de turno (otro) esta tecleando. */
+  /** Muestra lo que el jugador de turno (otro) esta tecleando, bajo su avatar. */
   showTyping(player: string, text: string): void {
-    this.typingEl.textContent = text ? `${player}: ${text}` : "";
+    this.setWord(player, text);
   }
 
-  /** Rechazo: sacude el input y muestra el motivo brevemente. */
+  /** Rechazo: sacude el avatar propio y muestra el motivo bajo el. */
   flashReject(message: string): void {
-    this.input.classList.remove("is-reject");
-    void this.input.offsetWidth;
-    this.input.classList.add("is-reject");
-    this.typingEl.textContent = message;
-    this.typingEl.classList.add("is-reject");
-    window.setTimeout(() => this.typingEl.classList.remove("is-reject"), 900);
+    const card = this.cardEls.get(this.me);
+    if (card) {
+      card.classList.remove("is-reject");
+      void card.offsetWidth;
+      card.classList.add("is-reject");
+      window.setTimeout(() => card.classList.remove("is-reject"), 500);
+    }
+    const el = this.wordEls.get(this.me);
+    if (el) {
+      el.textContent = message;
+      el.classList.add("is-reject");
+      window.setTimeout(() => el.classList.remove("is-reject"), 900);
+    }
   }
 
-  /** Resalta una palabra aceptada al centro por un instante. */
-  flashAccept(word: string): void {
-    this.typingEl.textContent = word;
-    this.typingEl.classList.remove("is-reject");
-    this.typingEl.classList.add("is-accept");
-    window.setTimeout(() => this.typingEl.classList.remove("is-accept"), 700);
+  /** Sello de palabra aceptada bajo el avatar de quien la escribio. */
+  flashAccept(player: string, word: string): void {
+    const el = this.wordEls.get(player);
+    if (!el) return;
+    el.textContent = word;
+    el.classList.remove("is-reject");
+    el.classList.add("is-accept");
+    window.setTimeout(() => el.classList.remove("is-accept"), 700);
   }
 
   // ---------- Mecha ----------
 
-  /** Anima la regla de tiempo hasta `deadline` (epoch ms), sabiendo su `total`. */
+  /** Anima la mecha (fuse) hasta `deadline` (epoch ms), sabiendo su `total`. */
   startFuse(deadline: number, total: number): void {
     this.stopFuse();
     const tick = () => {

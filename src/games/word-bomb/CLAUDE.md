@@ -40,10 +40,19 @@ descubrirlo) y en el picker/votacion de salas como cualquier otro juego de sala.
   (disparado por `onStart` de RoomMode al pasar la ronda a "playing"), conecta el
   transporte al server, renderiza los `wb:state`, maneja rechazos/tipeo y reporta
   el puntaje en el `wb:gameover`.
-- `game/Hud.ts` — DOM "prensa de papel": fila de jugadores con vidas, tarjeta del
-  fragmento, la regla-mecha, el input, el preview de tipeo del rival y el
-  countdown. Los estados de espera/resultados/tablero final los cubre el
-  `RoomOverlay` compartido por encima.
+- `game/Hud.ts` — DOM "mesa de bomba" (ver DESIGN.md): los jugadores forman un
+  **circulo** alrededor de la **bomba central** (repartidos por angulo, `i*360/n`
+  desde arriba, soporta 2-8 jugadores). Cada jugador es una columna: **nombre
+  arriba**, **avatar generico** (silueta violeta SVG sobre placa gris, igual para
+  todos — nunca imagenes propias) con corazones/calavera encima, y **debajo lo que
+  escribe**. La bomba muestra el fragmento y una **flecha amarilla gira** apuntando
+  al jugador de turno; su nombre se pone **verde**. **No hay caja de texto**: un
+  `<input>` invisible (opacity 0, cubre la arena) captura el tecleo y summonea el
+  teclado en movil, y el texto se refleja bajo el avatar propio; el tipeo ajeno
+  llega por el relay `wb:typing` y se muestra bajo el avatar del rival de turno. La
+  ultima palabra aceptada de cada jugador queda bajo su avatar (`lastWords` en
+  `Game.ts`). La mecha (fuse) se anima bajo la bomba. Los estados de
+  espera/resultados/tablero final los cubre el `RoomOverlay` compartido por encima.
 - `game/WordBombTransport.ts` — interfaz de transporte + tipos que **espejan**
   `server/src/protocol.ts` (no se comparte modulo entre `src/` y `server/` por la
   regla de decoupling; si cambia el protocolo, tocar los dos lados).
