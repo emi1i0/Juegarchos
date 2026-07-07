@@ -70,8 +70,11 @@ export class Renderer {
     canvas.width = VIEW_WIDTH;
     canvas.height = VIEW_HEIGHT;
     const c = canvas.getContext("2d")!;
+    // Two stops darker than it wants to be — restraint in the field is what
+    // lets the figures burn (DESIGN.md).
     const grad = c.createLinearGradient(0, 0, 0, VIEW_HEIGHT);
-    grad.addColorStop(0, BG_TOP);
+    grad.addColorStop(0, "#06070f");
+    grad.addColorStop(0.55, BG_TOP);
     grad.addColorStop(1, BG_BOTTOM);
     c.fillStyle = grad;
     c.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
@@ -108,7 +111,7 @@ export class Renderer {
     c.globalAlpha = 1;
 
     // Subtle scanlines across the whole view.
-    c.globalAlpha = 0.04;
+    c.globalAlpha = 0.03;
     c.fillStyle = "#000";
     for (let y = 0; y < VIEW_HEIGHT; y += 4) c.fillRect(0, y, VIEW_WIDTH, 2);
     c.globalAlpha = 1;
@@ -124,17 +127,34 @@ export class Renderer {
     c.stroke();
     c.shadowBlur = 0;
 
-    // Static horizontal rows of the floor grid.
-    c.strokeStyle = "rgba(34, 224, 255, 0.18)";
+    // The floor answers the emitter: light spill fading down from the line.
+    const spill = c.createLinearGradient(0, FLOOR_Y, 0, FLOOR_Y + 44);
+    spill.addColorStop(0, "rgba(34, 224, 255, 0.14)");
+    spill.addColorStop(1, "rgba(34, 224, 255, 0)");
+    c.fillStyle = spill;
+    c.fillRect(0, FLOOR_Y, VIEW_WIDTH, 44);
+
+    // Horizontal rows of the floor grid, fading as they leave the light.
     c.lineWidth = 1;
     const rows = 5;
     for (let i = 1; i <= rows; i++) {
       const y = FLOOR_Y + (FLOOR_HEIGHT / rows) * i;
+      c.strokeStyle = `rgba(34, 224, 255, ${0.2 - (i - 1) * 0.035})`;
       c.beginPath();
       c.moveTo(0, y);
       c.lineTo(VIEW_WIDTH, y);
       c.stroke();
     }
+
+    // Vignette: the corners recede so the centre of play carries the eye.
+    const vig = c.createRadialGradient(
+      VIEW_WIDTH / 2, VIEW_HEIGHT * 0.44, VIEW_HEIGHT * 0.36,
+      VIEW_WIDTH / 2, VIEW_HEIGHT * 0.44, VIEW_HEIGHT * 0.82,
+    );
+    vig.addColorStop(0, "rgba(4, 5, 12, 0)");
+    vig.addColorStop(1, "rgba(4, 5, 12, 0.4)");
+    c.fillStyle = vig;
+    c.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
 
     return canvas;
   }
@@ -237,53 +257,134 @@ export class Renderer {
     return canvas;
   }
 
+  /** A machined circular blade (see DESIGN.md): hooked asymmetric teeth, a
+   *  gunmetal disc, a bolt circle of lightening holes and a layered arbor —
+   *  the silhouette of a cutting tool, not a star shape. */
   private buildSawSprite(): Sprite {
-    const pad = 22; // room for shadowBlur 18 + the stroke
+    const pad = 22; // room for shadowBlur + the rim stroke
     const size = (SAW_RADIUS + pad) * 2;
     return bakeSprite(size, size, (c) => {
-      const teeth = 10;
-      c.shadowColor = MAGENTA;
-      c.shadowBlur = 18;
+      const R = SAW_RADIUS;
+      const teeth = 11;
+      const step = (Math.PI * 2) / teeth;
 
-      // Toothed disc.
-      c.beginPath();
+      // Blade silhouette: flat-topped hooked teeth (root, leading corner,
+      // sloped top, gullet) — machined, not a needle starburst.
+      const blade = new Path2D();
       for (let i = 0; i < teeth; i++) {
-        const a0 = (i / teeth) * Math.PI * 2;
-        const a1 = ((i + 0.5) / teeth) * Math.PI * 2;
-        c.lineTo(Math.cos(a0) * SAW_RADIUS, Math.sin(a0) * SAW_RADIUS);
-        c.lineTo(Math.cos(a1) * SAW_RADIUS * 0.72, Math.sin(a1) * SAW_RADIUS * 0.72);
+        const a = i * step;
+        const pt = (rel: number, r: number) =>
+          blade.lineTo(Math.cos(a + step * rel) * R * r, Math.sin(a + step * rel) * R * r);
+        pt(0, 0.8);
+        pt(0.12, 1);
+        pt(0.4, 0.95);
+        pt(0.58, 0.78);
       }
-      c.closePath();
-      c.fillStyle = "#2a0a1c";
-      c.fill();
-      c.lineWidth = 3;
+      blade.closePath();
+
+      // Disc body: dark gunmetal turning warmer toward the rim.
+      c.shadowColor = MAGENTA;
+      c.shadowBlur = 16;
+      const body = c.createRadialGradient(0, 0, R * 0.1, 0, 0, R);
+      body.addColorStop(0, "#241631");
+      body.addColorStop(0.62, "#180e24");
+      body.addColorStop(1, "#3c1733");
+      c.fillStyle = body;
+      c.fill(blade);
+
+      // Rim light: a thin hot edge instead of a thick outline.
+      c.lineWidth = 1.8;
       c.strokeStyle = MAGENTA;
+      c.stroke(blade);
+      c.shadowBlur = 0;
+
+      // Machining groove just inside the gullets.
+      c.beginPath();
+      c.arc(0, 0, R * 0.66, 0, Math.PI * 2);
+      c.lineWidth = 1;
+      c.strokeStyle = "rgba(255, 45, 120, 0.28)";
       c.stroke();
 
-      // Hub.
-      c.shadowBlur = 0;
+      // Bolt circle of lightening holes.
+      const holes = 5;
+      for (let i = 0; i < holes; i++) {
+        const a = (i / holes) * Math.PI * 2 + step * 0.5;
+        const hx = Math.cos(a) * R * 0.46;
+        const hy = Math.sin(a) * R * 0.46;
+        c.beginPath();
+        c.arc(hx, hy, R * 0.1, 0, Math.PI * 2);
+        c.fillStyle = "#0d0616";
+        c.fill();
+        c.lineWidth = 1;
+        c.strokeStyle = "rgba(255, 45, 120, 0.35)";
+        c.stroke();
+      }
+
+      // Layered arbor: ring, hub face, dark axle hole.
       c.beginPath();
-      c.arc(0, 0, SAW_RADIUS * 0.32, 0, Math.PI * 2);
-      c.fillStyle = MAGENTA;
+      c.arc(0, 0, R * 0.3, 0, Math.PI * 2);
+      c.lineWidth = 2;
+      c.strokeStyle = "rgba(255, 45, 120, 0.85)";
+      c.stroke();
+      c.beginPath();
+      c.arc(0, 0, R * 0.22, 0, Math.PI * 2);
+      const hub = c.createRadialGradient(-R * 0.06, -R * 0.06, 0, 0, 0, R * 0.22);
+      hub.addColorStop(0, "#ff6ba0");
+      hub.addColorStop(1, "#b81b56");
+      c.fillStyle = hub;
+      c.fill();
+      c.beginPath();
+      c.arc(0, 0, R * 0.08, 0, Math.PI * 2);
+      c.fillStyle = "#0d0616";
       c.fill();
     });
   }
 
+  /** A minted token (see DESIGN.md): beveled edge catching the light from
+   *  above, a slightly darker face, a struck ring groove and one specular
+   *  arc — not two flat concentric circles. */
   private buildCoinSprite(): Sprite {
-    const pad = 18; // room for shadowBlur 16
+    const pad = 16; // room for shadowBlur
     const size = (COIN_RADIUS + pad) * 2;
     return bakeSprite(size, size, (c) => {
+      const R = COIN_RADIUS;
+
+      // Edge: bright where the light hits (top-left), darker below.
       c.shadowColor = GOLD;
-      c.shadowBlur = 16;
+      c.shadowBlur = 13;
+      const edge = c.createLinearGradient(-R, -R, R * 0.7, R);
+      edge.addColorStop(0, "#ffe9a3");
+      edge.addColorStop(0.5, GOLD);
+      edge.addColorStop(1, "#b9860e");
       c.beginPath();
-      c.arc(0, 0, COIN_RADIUS, 0, Math.PI * 2);
-      c.fillStyle = GOLD;
+      c.arc(0, 0, R, 0, Math.PI * 2);
+      c.fillStyle = edge;
       c.fill();
       c.shadowBlur = 0;
+
+      // Face, one step darker than the edge so the bevel reads.
+      const face = c.createLinearGradient(-R, -R, R, R);
+      face.addColorStop(0, "#f5c93e");
+      face.addColorStop(1, "#cf9d18");
       c.beginPath();
-      c.arc(0, 0, COIN_RADIUS * 0.55, 0, Math.PI * 2);
-      c.fillStyle = "#fff6cf";
+      c.arc(0, 0, R * 0.78, 0, Math.PI * 2);
+      c.fillStyle = face;
       c.fill();
+
+      // Struck ring groove.
+      c.beginPath();
+      c.arc(0, 0, R * 0.58, 0, Math.PI * 2);
+      c.lineWidth = 1.2;
+      c.strokeStyle = "rgba(122, 84, 8, 0.55)";
+      c.stroke();
+
+      // One specular arc along the lit edge.
+      c.beginPath();
+      c.arc(0, 0, R * 0.86, Math.PI * 1.05, Math.PI * 1.55);
+      c.lineWidth = 1.6;
+      c.lineCap = "round";
+      c.strokeStyle = "rgba(255, 250, 224, 0.85)";
+      c.stroke();
     });
   }
 
@@ -298,32 +399,46 @@ export class Renderer {
       const yTop = -h / 2;
       const bodyBottom = yTop + bodyH;
 
-      // Little stubby feet under the body.
+      // Little stubby feet under the body, in shade (they face the floor).
       c.shadowColor = CYAN;
-      c.shadowBlur = 12;
-      c.fillStyle = "#3ec4e0";
+      c.shadowBlur = 8;
+      c.fillStyle = "#2aa4c2";
       const footW = 9;
       const footGap = 4;
-      roundRect(c, -footGap - footW, bodyBottom, footW, footH, 3);
+      roundRect(c, -footGap - footW, bodyBottom, footW, footH, 2);
       c.fill();
-      roundRect(c, footGap, bodyBottom, footW, footH, 3);
+      roundRect(c, footGap, bodyBottom, footW, footH, 2);
       c.fill();
 
-      // Body.
+      // Body: machined corners, lit from above.
       c.shadowColor = CYAN;
-      c.shadowBlur = 20;
-      roundRect(c, x, yTop, w, bodyH, 10);
+      c.shadowBlur = 18;
+      roundRect(c, x, yTop, w, bodyH, 7);
       const grad = c.createLinearGradient(x, yTop, x, bodyBottom);
-      grad.addColorStop(0, "#8dfcff");
-      grad.addColorStop(1, CYAN);
+      grad.addColorStop(0, "#9dfdff");
+      grad.addColorStop(0.55, CYAN);
+      grad.addColorStop(1, "#14b5d6");
       c.fillStyle = grad;
       c.fill();
       c.shadowBlur = 0;
-      c.lineWidth = 2;
-      c.strokeStyle = "#d6ffff";
+
+      // Rim light along the top edge only (no full sticker outline), plus a
+      // soft shade seating the body's lower edge.
+      c.beginPath();
+      c.moveTo(x + 5, yTop + 1.2);
+      c.lineTo(x + w - 5, yTop + 1.2);
+      c.lineWidth = 1.6;
+      c.lineCap = "round";
+      c.strokeStyle = "rgba(240, 255, 255, 0.75)";
+      c.stroke();
+      c.beginPath();
+      c.moveTo(x + 5, bodyBottom - 1.6);
+      c.lineTo(x + w - 5, bodyBottom - 1.6);
+      c.lineWidth = 2.4;
+      c.strokeStyle = "rgba(8, 42, 64, 0.28)";
       c.stroke();
 
-      // --- Face: just solid black eyes and angry brows, centred in the body ---
+      // --- Face: solid black eyes and angry brows, centred in the body ---
       const ink = "#0a111f";
       const eyeY = yTop + bodyH * 0.6;
       const eyeDX = 7;
@@ -332,19 +447,19 @@ export class Renderer {
       c.fillStyle = ink;
       for (const s of [-1, 1]) {
         c.beginPath();
-        c.ellipse(s * eyeDX, eyeY, 3.6, 4.6, 0, 0, Math.PI * 2);
+        c.ellipse(s * eyeDX, eyeY, 3.1, 4.2, 0, 0, Math.PI * 2);
         c.fill();
       }
 
-      // Thick angry eyebrows, sloping down toward the centre, set a bit above
-      // the eyes (separated from them).
+      // Angry eyebrows, sloping down toward the centre, set a bit above the
+      // eyes — drawn thinner so they read as intent, not cartoon.
       c.strokeStyle = ink;
-      c.lineWidth = 3.4;
+      c.lineWidth = 2.6;
       c.lineCap = "round";
       c.beginPath();
-      c.moveTo(-11, eyeY - 11.5);
+      c.moveTo(-11, eyeY - 11);
       c.lineTo(-3, eyeY - 7.5);
-      c.moveTo(11, eyeY - 11.5);
+      c.moveTo(11, eyeY - 11);
       c.lineTo(3, eyeY - 7.5);
       c.stroke();
     });
@@ -398,7 +513,7 @@ export class Renderer {
    *  viewer (the glow line and grid rows live in the baked overlay). */
   private drawFloor(ctx: CanvasRenderingContext2D): void {
     ctx.save();
-    ctx.strokeStyle = "rgba(34, 224, 255, 0.18)";
+    ctx.strokeStyle = "rgba(34, 224, 255, 0.12)";
     ctx.lineWidth = 1;
     const scroll = (this.time * 40) % 64;
     for (let x = -scroll; x < VIEW_WIDTH + 64; x += 64) {
@@ -429,7 +544,7 @@ export class Renderer {
       const node = this.trail[i];
       const d = ((PLAYER_WIDTH * 0.4 * t) / GLOW_DOT_RADIUS) * dot.w;
       if (d < 1) continue;
-      ctx.globalAlpha = t * 0.35;
+      ctx.globalAlpha = t * 0.26;
       ctx.drawImage(dot.canvas, node.x - d / 2, node.y - d / 2, d, d);
     }
     ctx.restore();
@@ -448,7 +563,11 @@ export class Renderer {
     // Blink out over the last stretch of the coin's life.
     if (life < 1.5 && Math.floor(life * 10) % 2 === 0) return;
     const s = this.coinSprite;
-    ctx.drawImage(s.canvas, x - s.w / 2, y - s.h / 2, s.w, s.h);
+    // Minted-token spin: the width oscillates like a coin turning on its
+    // axis (phase offset by position so coins don't spin in unison).
+    const spin = Math.abs(Math.cos(this.time * 2.6 + x * 0.045));
+    const w = s.w * (0.3 + 0.7 * spin);
+    ctx.drawImage(s.canvas, x - w / 2, y - s.h / 2, w, s.h);
   }
 
   private drawPlayer(ctx: CanvasRenderingContext2D, player: Player): void {
