@@ -40,25 +40,36 @@ descubrirlo) y en el picker/votacion de salas como cualquier otro juego de sala.
   (disparado por `onStart` de RoomMode al pasar la ronda a "playing"), conecta el
   transporte al server, renderiza los `wb:state`, maneja rechazos/tipeo y reporta
   el puntaje en el `wb:gameover`.
-- `game/Hud.ts` — DOM "mesa de bomba" (ver DESIGN.md): los jugadores forman un
+- `game/Hud.ts` — DOM "fiesta de la bomba" (ver DESIGN.md): los jugadores forman un
   **circulo** alrededor de la **bomba central** (repartidos por angulo, `i*360/n`
   desde arriba, soporta 2-8 jugadores). Cada jugador es una columna: **nombre
   arriba**, **avatar generico** (silueta violeta SVG sobre placa gris, igual para
   todos — nunca imagenes propias) con corazones/calavera encima, y **debajo lo que
-  escribe**. La bomba muestra el fragmento y una **flecha amarilla gira** apuntando
-  al jugador de turno; su nombre se pone **verde**. **No hay caja de texto**: un
+  escribe**. La **bomba** es cartoon: esfera con brillo (`.wb__bomb`), **collar
+  metalico** (`.wb__collar`), **mecha trenzada con chispa** que titila
+  (`.wb__wick`/`.wb__spark`), apoyada en un **socket de luz ambar** (`.wb__socket`);
+  el fragmento va en **tiza** blanca. De fondo suben **brasas** (`.wb__embers`,
+  sembradas por `buildEmbers` con posicion/tiempos random). Una **flecha amarilla
+  gira** apuntando al jugador de turno (por fuera del anillo y de la mecha, distancia
+  `clamp(96px,20vmin,150px)` para no encimarse); su nombre se pone **verde**. **No hay caja de texto**: un
   `<input>` invisible (opacity 0, cubre la arena) captura el tecleo y summonea el
   teclado en movil, y el texto se refleja bajo el avatar propio; el tipeo ajeno
   llega por el relay `wb:typing` y se muestra bajo el avatar del rival de turno
   (el **eco del tipeo propio se ignora** en `Game.ts` — llega con lag y pisaria lo
   recien escrito, causando parpadeo). La ultima palabra aceptada de cada jugador
   queda bajo su avatar (`lastWords` en `Game.ts`). **La mecha es visible para todos**:
-  un **anillo alrededor de la bomba** se consume y bajo el fragmento van los
-  **segundos restantes** (de chispa amarilla a rojo, con pulso al final). El server
-  manda `fuseMs`/`fuseTotalMs` en cada `wb:state` y `Hud.setFuse` los ancla a
+  un **anillo alrededor de la bomba** (un **arco de 300deg con hueco arriba** — SVG
+  rotado -60deg — para no cruzar la mecha) se consume, con los **segundos** bajo el
+  fragmento (de chispa amarilla a rojo, con pulso al final). El server manda
+  `fuseMs`/`fuseTotalMs` en cada `wb:state` y `Hud.setFuse` los ancla a
   `performance.now()` para animar sin drift de reloj entre maquinas; el rAF corre
-  solo en la Hud (`tickFuse`) y `clearFuse` lo detiene fuera de juego. El server
-  sigue siendo el arbitro real del deadline (hace explotar la bomba). Los estados de
+  solo en la Hud (`tickFuse`) y `clearFuse` lo detiene fuera de juego. La **mecha**
+  (`.wb__wick`) tambien se **quema** con el tiempo (`Hud.tickFuse` acorta su alto con
+  `frac^WICK_EXP`, no lineal, para que su quemado coincida con el vaciado del anillo;
+  se resetea sola por turno). Al **perder una vida** la bomba **explota**
+  (`Hud.flashExplosion`: fogonazo + onda + esquirlas + sacudida, ~700ms), disparada
+  desde `Game.playDiffSounds` cuando cae una vida. El server sigue siendo el arbitro
+  real del deadline (hace explotar la bomba). Los estados de
   espera/resultados/tablero final los cubre el `RoomOverlay` compartido por encima.
 - `game/WordBombTransport.ts` — interfaz de transporte + tipos que **espejan**
   `server/src/protocol.ts` (no se comparte modulo entre `src/` y `server/` por la

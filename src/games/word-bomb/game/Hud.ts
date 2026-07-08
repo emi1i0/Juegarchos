@@ -27,14 +27,35 @@ const AVATAR_SVG = `
 /** Radio del circulo de jugadores, como fraccion del semilado de la arena. */
 const RING_RADIUS = 0.37;
 
+/** Cantidad de brasas de ambiente (ver DESIGN.md). */
+const EMBER_COUNT = 16;
+/** Esquirlas que salen disparadas en la explosion. */
+const BOOM_SHARDS = 12;
+/** Duracion total de la explosion (limpieza del DOM). */
+const BOOM_MS = 700;
+
+/** Aleatorio en [a, b). */
+const rnd = (a: number, b: number): number => a + Math.random() * (b - a);
+
 /** Circunferencia del anillo de mecha (r=46 en el viewBox 100x100 del SVG). */
 const FUSE_CIRC = 2 * Math.PI * 46;
+/** El anillo es un arco de 300deg (deja un hueco de 60deg arriba, por donde sale la
+ *  mecha, para que el aro nunca cruce el pabilo). El .wb__fuse va rotado -60deg y el
+ *  track dibuja este arco por CSS; la barra usa esta longitud como maximo. */
+const FUSE_ARC = FUSE_CIRC * (300 / 360);
+/** Alto de la mecha a full (% del alto de la bomba); se acorta con el tiempo hasta 0
+ *  (la chispa baja quemando el pabilo). Debe coincidir con el `height` de `.wb__wick`. */
+const WICK_FULL_PCT = 40;
+/** La mecha se quema con `frac^WICK_EXP` (no lineal): como es corta y la chispa es un
+ *  blob, en lineal "parece quemada" antes de que el anillo termine. Con exp < 1
+ *  retiene mas largo a fraccion baja, asi su quemado coincide con el vaciado del aro. */
+const WICK_EXP = 0.6;
 /** Debajo de esta fraccion la mecha entra en "critico" (pulso + rojo). */
 const FUSE_CRITICAL = 0.25;
 
 /**
- * Color de la mecha por fraccion restante: de chispa amarilla (llena) a rojo
- * peligro (vacia), interpolado en RGB. Mismos tonos que --spark / --danger.
+ * Color del contador por fraccion restante: de chispa amarilla (lleno) a rojo
+ * peligro (por agotarse), interpolado en RGB. Mismos tonos que --spark / --danger.
  */
 function fuseColor(frac: number): string {
   const t = Math.max(0, Math.min(1, frac));
@@ -60,7 +81,11 @@ export class Hud {
   private readonly bombTimeEl: HTMLDivElement;
   private readonly fuseEl: SVGSVGElement;
   private readonly fuseBar: SVGCircleElement;
+  private readonly wickEl: HTMLDivElement;
+  private readonly bombEl: HTMLDivElement;
+  private readonly boomEl: HTMLDivElement;
   private readonly pointer: HTMLDivElement;
+  private boomTimer = 0;
   private readonly input: HTMLInputElement;
   private readonly overlay: HTMLDivElement;
   private readonly countdownEl: HTMLDivElement;
@@ -85,16 +110,21 @@ export class Hud {
     wrap.className = "wb";
     wrap.innerHTML = `
       <div class="wb__stage" hidden>
+        <div class="wb__embers" aria-hidden="true"></div>
         <div class="wb__arena">
+          <div class="wb__socket" aria-hidden="true"></div>
           <svg class="wb__fuse" viewBox="0 0 100 100" hidden aria-hidden="true">
             <circle class="wb__fuse-track" cx="50" cy="50" r="46"></circle>
             <circle class="wb__fuse-bar" cx="50" cy="50" r="46"></circle>
           </svg>
           <div class="wb__bomb">
+            <div class="wb__wick" aria-hidden="true"><span class="wb__spark"></span></div>
+            <div class="wb__collar" aria-hidden="true"></div>
             <div class="wb__bomb-frag"></div>
             <div class="wb__bomb-time"></div>
           </div>
           <div class="wb__pointer" hidden></div>
+          <div class="wb__boom" aria-hidden="true"></div>
         </div>
         <input class="wb__input" type="text" inputmode="text" autocapitalize="off"
                autocomplete="off" autocorrect="off" spellcheck="false" maxlength="32"
@@ -111,11 +141,16 @@ export class Hud {
     this.bombTimeEl = wrap.querySelector(".wb__bomb-time")!;
     this.fuseEl = wrap.querySelector(".wb__fuse")!;
     this.fuseBar = wrap.querySelector(".wb__fuse-bar")!;
-    this.fuseBar.style.strokeDasharray = String(FUSE_CIRC);
+    this.wickEl = wrap.querySelector(".wb__wick")!;
+    this.bombEl = wrap.querySelector(".wb__bomb")!;
+    this.boomEl = wrap.querySelector(".wb__boom")!;
     this.pointer = wrap.querySelector(".wb__pointer")!;
     this.input = wrap.querySelector(".wb__input")!;
     this.overlay = wrap.querySelector(".wb__overlay")!;
     this.countdownEl = wrap.querySelector(".wb__countdown")!;
+
+    // Brasas de ambiente (ver DESIGN.md): suben lento de fondo, por detras de todo.
+    this.buildEmbers(wrap.querySelector(".wb__embers")!);
 
     // Enter envia; el texto tipeado se refleja bajo el avatar propio en vivo.
     this.input.addEventListener("keydown", (e) => {
@@ -237,7 +272,10 @@ export class Hud {
     this.bombFragEl.textContent = view.fragment ? view.fragment.toUpperCase() : "";
     if (turnAngle !== null) {
       this.pointer.hidden = false;
-      this.pointer.style.transform = `translate(-50%, -50%) rotate(${turnAngle}deg) translateY(-70px)`;
+      // La distancia escala y queda por fuera del anillo Y de la punta de la mecha
+      // (que vive fija arriba de la bomba), asi la flecha no se encima con ellos.
+      this.pointer.style.transform =
+        `translate(-50%, -50%) rotate(${turnAngle}deg) translateY(calc(-1 * clamp(96px, 20vmin, 150px)))`;
     } else {
       this.pointer.hidden = true;
     }
@@ -246,7 +284,48 @@ export class Hud {
     if (view.myTurn) this.setWord(this.me, this.input.value);
   }
 
-  // ---------- Mecha visible ----------
+  /**
+   * Explosion de la bomba: flash + onda expansiva + esquirlas + sacudida. Un golpe
+   * seco y calido (ver DESIGN.md). Se dispara cuando un jugador pierde una vida (la
+   * mecha llego a 0), desde `Game.playDiffSounds`.
+   */
+  flashExplosion(): void {
+    let html = `<div class="wb__boom-flash"></div><div class="wb__boom-ring"></div>`;
+    for (let i = 0; i < BOOM_SHARDS; i++) {
+      const angle = (360 / BOOM_SHARDS) * i + rnd(-12, 12);
+      html += `<span class="wb__boom-shard" style="--a:${angle.toFixed(1)}deg;--d:${rnd(56, 120).toFixed(0)}px"></span>`;
+    }
+    this.boomEl.innerHTML = html;
+    // Reinicia las animaciones (reflow) por si ya habia una en curso.
+    this.boomEl.classList.remove("is-on");
+    this.bombEl.classList.remove("is-boom");
+    void this.boomEl.offsetWidth;
+    this.boomEl.classList.add("is-on");
+    this.bombEl.classList.add("is-boom");
+    window.clearTimeout(this.boomTimer);
+    this.boomTimer = window.setTimeout(() => {
+      this.boomEl.classList.remove("is-on");
+      this.bombEl.classList.remove("is-boom");
+      this.boomEl.innerHTML = "";
+    }, BOOM_MS);
+  }
+
+  /** Siembra las brasas de ambiente con posicion/tamano/tiempos aleatorios. */
+  private buildEmbers(host: HTMLDivElement): void {
+    for (let i = 0; i < EMBER_COUNT; i++) {
+      const e = document.createElement("span");
+      e.className = "wb__ember";
+      const size = rnd(3, 7);
+      e.style.left = `${rnd(2, 98)}%`;
+      e.style.width = `${size}px`;
+      e.style.height = `${size}px`;
+      e.style.animationDuration = `${rnd(6, 13)}s`;
+      e.style.animationDelay = `${-rnd(0, 13)}s`; // desfasadas desde el arranque
+      host.appendChild(e);
+    }
+  }
+
+  // ---------- Mecha visible (anillo + segundos) ----------
 
   /**
    * Arranca/actualiza el anillo de la mecha. `remainingMs` y `totalMs` vienen del
@@ -275,12 +354,19 @@ export class Hud {
     this.fuseEl.setAttribute("hidden", "");
     this.fuseEl.classList.remove("is-critical");
     this.bombTimeEl.textContent = "";
+    this.wickEl.style.removeProperty("height"); // vuelve al alto full del CSS
   }
 
   private readonly tickFuse = (): void => {
     const remaining = Math.max(0, this.fuseEnd - performance.now());
     const frac = this.fuseTotalMs > 0 ? Math.min(1, remaining / this.fuseTotalMs) : 0;
-    this.fuseBar.style.strokeDashoffset = String(FUSE_CIRC * (1 - frac));
+    // La barra es un sub-arco del track (arco de 300deg): largo = frac * arco, desde
+    // el inicio del arco. Nunca entra en el hueco de arriba (max = FUSE_ARC).
+    this.fuseBar.style.strokeDasharray = `${FUSE_ARC * frac} ${FUSE_CIRC}`;
+    // La mecha se quema con el tiempo: se acorta y la chispa (su punta) baja hacia la
+    // bomba. Curva `frac^WICK_EXP` para que su quemado coincida con el vaciado del aro
+    // (ver WICK_EXP). Se resetea sola al pasar de turno (setFuse re-ancla con frac ~1).
+    this.wickEl.style.height = `${(WICK_FULL_PCT * Math.pow(frac, WICK_EXP)).toFixed(1)}%`;
     const color = fuseColor(frac);
     this.fuseBar.style.stroke = color;
     this.bombTimeEl.style.color = color;

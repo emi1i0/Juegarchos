@@ -215,6 +215,7 @@ export class Game {
       const was = before.get(p.nickname);
       if (was !== undefined && p.lives < was) {
         SoundEffects.playExplode();
+        this.hud.flashExplosion();
         break;
       }
     }

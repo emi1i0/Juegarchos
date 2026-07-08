@@ -1,18 +1,22 @@
-/* Bomba Palabra — "Mesa de bomba" (ver DESIGN.md): mesa oscura y calida, los
-   jugadores en circulo alrededor de la bomba, avatar generico, y bajo cada uno lo
-   que escribe. Sin caja de texto (un input invisible captura el tecleo). */
+/* Bomba Palabra — "Fiesta de la bomba" (ver DESIGN.md): mesa caliente cartoon, la
+   bomba con la mecha encendida en un charco de luz ambar, brasas subiendo de fondo,
+   los jugadores en circulo. Sin caja de texto (un input invisible captura el tecleo). */
 
 :root {
-  --table: #3a3330;
-  --table-hi: #4a423d;
-  --name: #f5f2ee;
+  --night: #161016;
+  --night-deep: #0b0910;
+  --glow: #ff7a18;
+  --ember: #ffb24d;
+  --name: #f7efe6;
   --muted: #b7ada4;
   --plate: #8a8a8a;
-  --silhouette: #6a5f86;
+  --silhouette: #7c4dcc;
   --turn: #46d16a;
-  --spark: #f5c518;
+  --spark: #ffd23f;
   --heart: #ff5a5f;
   --danger: #e23b3b;
+  --collar-hi: #9aa0aa;
+  --collar-lo: #3e424a;
 }
 
 * {
@@ -28,7 +32,8 @@ body {
 
 body {
   background:
-    radial-gradient(circle at 50% 45%, var(--table-hi) 0%, var(--table) 62%, #2c2724 100%);
+    radial-gradient(circle at 50% 46%, rgba(255, 122, 24, 0.28) 0%, rgba(255, 100, 20, 0.08) 30%, transparent 55%),
+    radial-gradient(circle at 50% 44%, var(--night) 0%, var(--night-deep) 70%, #060409 100%);
   color: var(--name);
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -101,6 +106,67 @@ body {
   pointer-events: none;
 }
 
+/* ---------- Ambiente (brasas + resplandor) ---------- */
+
+/* Brasas que suben lento, por detras de todo. Las siembra el JS (posicion,
+   tamano y tiempos aleatorios). Atmosfera de la portada, siempre sutil. */
+.wb__embers {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+.wb__ember {
+  position: absolute;
+  bottom: -14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ember) 0%, var(--glow) 55%, rgba(255, 120, 20, 0) 100%);
+  opacity: 0;
+  will-change: transform, opacity;
+  animation-name: wb-ember;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes wb-ember {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-94vh) translateX(14px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* Socket: el charco de luz ambar donde se apoya la bomba (foco caliente central). */
+.wb__socket {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(158px, 36vmin, 280px);
+  height: clamp(158px, 36vmin, 280px);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 140, 30, 0.5) 0%,
+    rgba(255, 110, 20, 0.26) 42%,
+    rgba(255, 90, 10, 0.06) 66%,
+    transparent 78%
+  );
+  filter: blur(2px);
+  z-index: 0;
+  pointer-events: none;
+}
+
 /* ---------- Bomba central ---------- */
 
 .wb__bomb {
@@ -111,11 +177,13 @@ body {
   width: clamp(96px, 22vmin, 150px);
   height: clamp(96px, 22vmin, 150px);
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #4a4a4a 0%, #1c1a19 70%);
-  border: 3px solid #0d0c0b;
+  background: radial-gradient(circle at 34% 28%, #55585f 0%, #23222a 34%, #0e0c11 78%);
+  border: 2px solid #050406;
   box-shadow:
-    inset 0 4px 10px rgba(255, 255, 255, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.5);
+    inset 7px 9px 16px rgba(255, 255, 255, 0.1),
+    inset -7px -9px 20px rgba(0, 0, 0, 0.6),
+    0 10px 30px rgba(0, 0, 0, 0.6),
+    0 0 42px rgba(255, 120, 20, 0.28);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -123,20 +191,216 @@ body {
   z-index: 3;
 }
 
+/* Collar metalico arriba de la bomba (de donde sale la mecha). */
+.wb__collar {
+  position: absolute;
+  left: 50%;
+  top: -7%;
+  transform: translateX(-50%);
+  width: 32%;
+  height: 15%;
+  background: linear-gradient(var(--collar-hi) 0%, #6c7178 45%, var(--collar-lo) 100%);
+  border: 1px solid #2a2d33;
+  border-radius: 5px 5px 3px 3px;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    0 2px 3px rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+.wb__collar::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  transform: translateX(-50%);
+  width: 40%;
+  height: 42%;
+  background: #17141a;
+  border-radius: 50%;
+}
+
+/* Mecha trenzada encendida: cuerda con textura + chispa que titila en la punta.
+   Sale del collar (por eso su base va a la altura del collar y su z-index es MAYOR
+   que el del collar, para que no lo tape). El alto lo anima el JS: se acorta con el
+   tiempo (la chispa baja quemando el pabilo). */
+.wb__wick {
+  position: absolute;
+  left: 50%;
+  bottom: 102%;
+  transform: translateX(-50%) rotate(5deg);
+  transform-origin: bottom center;
+  width: 6%;
+  height: 40%;
+  border-radius: 3px;
+  background: repeating-linear-gradient(48deg, #b9822f 0 3px, #7f5620 3px 6px);
+  box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.45);
+  z-index: 2;
+}
+.wb__spark {
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--spark) 40%, var(--glow) 74%, transparent 100%);
+  box-shadow:
+    0 0 10px 3px rgba(255, 180, 60, 0.9),
+    0 0 22px 7px rgba(255, 120, 20, 0.5);
+  animation: wb-spark 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes wb-spark {
+  from {
+    transform: translate(-50%, 0) scale(0.8);
+    opacity: 0.85;
+  }
+  to {
+    transform: translate(-50%, -2px) scale(1.18);
+    opacity: 1;
+  }
+}
+
 .wb__bomb-frag {
-  font-size: clamp(1.4rem, 5vmin, 2.4rem);
+  font-size: clamp(1.5rem, 5.4vmin, 2.6rem);
   font-weight: 900;
-  letter-spacing: 0.08em;
-  color: var(--name);
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.03em;
+  color: #f4ede3;
+  transform: rotate(-4deg);
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.55),
+    0 0 7px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Explosion (golpe seco al perder una vida) ---------- */
+
+.wb__boom {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+/* Flash central: bola de fuego que crece y se apaga. */
+.wb__boom-flash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(140px, 30vmin, 210px);
+  height: clamp(140px, 30vmin, 210px);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.4);
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    #fff 0%,
+    #ffe27a 20%,
+    var(--glow) 48%,
+    rgba(226, 59, 59, 0.55) 72%,
+    transparent 82%
+  );
+}
+.wb__boom.is-on .wb__boom-flash {
+  animation: wb-boom-flash 320ms ease-out forwards;
+}
+/* Onda expansiva. */
+.wb__boom-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(120px, 26vmin, 180px);
+  height: clamp(120px, 26vmin, 180px);
+  border-radius: 50%;
+  border: 5px solid rgba(255, 200, 90, 0.9);
+  transform: translate(-50%, -50%) scale(0.3);
+  opacity: 0;
+}
+.wb__boom.is-on .wb__boom-ring {
+  animation: wb-boom-ring 520ms ease-out forwards;
+}
+/* Esquirlas: salen disparadas al angulo --a hasta la distancia --d. */
+.wb__boom-shard {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd23f 0%, var(--glow) 60%, transparent 100%);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+}
+.wb__boom.is-on .wb__boom-shard {
+  animation: wb-boom-shard 600ms ease-out forwards;
+}
+
+@keyframes wb-boom-flash {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.7);
+    opacity: 0;
+  }
+}
+@keyframes wb-boom-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0.9;
+    border-width: 5px;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.3);
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+@keyframes wb-boom-shard {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--a)) translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--a)) translateX(var(--d)) scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* Sacudida de la bomba (mantiene su centrado translate(-50%,-50%)). */
+.wb__bomb.is-boom {
+  animation: wb-boom-shake 320ms ease-in-out;
+}
+@keyframes wb-boom-shake {
+  0%,
+  100% {
+    transform: translate(-50%, -50%);
+  }
+  20% {
+    transform: translate(calc(-50% - 5px), calc(-50% + 1px));
+  }
+  40% {
+    transform: translate(calc(-50% + 5px), -50%);
+  }
+  60% {
+    transform: translate(calc(-50% - 3px), calc(-50% - 1px));
+  }
+  80% {
+    transform: translate(calc(-50% + 2px), -50%);
+  }
 }
 
 /* Segundos restantes de la mecha, bajo el fragmento (color lo pone el JS: de
-   chispa a rojo segun cuanto queda). */
+   chispa a rojo segun cuanto queda). Acompana al anillo. */
 .wb__bomb-time {
   min-height: 1em;
   margin-top: 3px;
-  font-size: clamp(0.75rem, 2.4vmin, 1.05rem);
+  font-size: clamp(0.8rem, 2.6vmin, 1.1rem);
   font-weight: 800;
   line-height: 1;
   color: var(--spark);
@@ -144,15 +408,18 @@ body {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
-/* Anillo de la mecha alrededor de la bomba: se consume con el tiempo. Empieza
-   arriba (rotado -90) y todos los jugadores lo ven en cada turno. */
+/* Anillo de la mecha alrededor de la bomba: se consume con el tiempo. Es un ARCO de
+   300deg con un hueco de 60deg arriba (el SVG va rotado -60deg y el track dibuja el
+   arco por dasharray) para que el aro NO cruce la mecha que sale por arriba. */
 .wb__fuse {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%) rotate(-90deg);
-  width: clamp(122px, 27vmin, 190px);
-  height: clamp(122px, 27vmin, 190px);
+  transform: translate(-50%, -50%) rotate(-60deg);
+  /* Notablemente mas grande que la bomba (clamp 96/22vmin/150) para dejar un gap
+     claro con el collar y la mecha. */
+  width: clamp(152px, 33vmin, 232px);
+  height: clamp(152px, 33vmin, 232px);
   z-index: 3;
   pointer-events: none;
   overflow: visible;
@@ -164,14 +431,17 @@ body {
   fill: none;
   stroke: rgba(0, 0, 0, 0.38);
   stroke-width: 3.5;
+  /* Arco 300deg + hueco 60deg (r=46 -> circunferencia ~289.03). */
+  stroke-dasharray: 240.86 48.17;
 }
 .wb__fuse-bar {
   fill: none;
   stroke: var(--spark);
-  stroke-width: 3.5;
+  stroke-width: 4;
   stroke-linecap: round;
-  /* stroke-dasharray / -dashoffset / stroke los setea el JS por frame. */
+  /* stroke-dasharray (largo del arco visible) y stroke los setea el JS por frame. */
   transition: stroke 180ms linear;
+  filter: drop-shadow(0 0 4px rgba(255, 180, 60, 0.55));
 }
 .wb__fuse.is-critical .wb__fuse-bar {
   animation: wb-fuse-pulse 0.5s ease-in-out infinite;
