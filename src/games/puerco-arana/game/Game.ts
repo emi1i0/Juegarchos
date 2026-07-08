@@ -186,8 +186,8 @@ export class Game {
   }
 
   /**
-   * Best grabbable anchor: above the pig, at most WEB_RANGE away and not too
-   * far behind; among candidates the one farthest ahead wins.
+   * First grabbable anchor: above the pig, at most WEB_RANGE away and not too
+   * far behind; selects the first matching one found.
    */
   private tryAttach(): void {
     if (this.attached || this.state !== "playing") return;
@@ -197,7 +197,8 @@ export class Game {
       if (dx < WEB_AHEAD_MIN) continue;
       if (a.y >= this.pigY - 10) continue;
       if (Math.hypot(dx, a.y - this.pigY) > WEB_RANGE) continue;
-      if (!bestAnchor || a.x > bestAnchor.x) bestAnchor = a;
+      bestAnchor = a;
+      break;
     }
     if (!bestAnchor) return;
 
