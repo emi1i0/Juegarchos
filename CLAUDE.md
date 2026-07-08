@@ -120,9 +120,14 @@ Estructura de `server/` (paquete propio, aislado del build de Vite, con su propi
   comparte modulo entre `src/` y `server/`); si cambia el protocolo, tocar ambos
   lados.
 - `src/dictionary.ts` — diccionario de espanol embebido
-  (`an-array-of-spanish-words`, ~636k palabras) para Bomba Palabra: normaliza
-  (conserva la ñ, saca acentos) y precomputa los fragmentos jugables. Vive solo
-  en el server (validacion no spoofeable, sin peso en el bundle del front).
+  (`an-array-of-spanish-words`, ~636k palabras) mas `src/extra-words.ts` para
+  Bomba Palabra: normaliza (conserva la ñ, saca acentos) y precomputa los
+  fragmentos jugables. Vive solo en el server (validacion no spoofeable, sin peso
+  en el bundle del front).
+- `src/extra-words.ts` — array `EXTRA_WORDS` editable a mano: palabras que el
+  diccionario base no trae (jerga, regionalismos). Se suman al set igual que el
+  resto; requiere redeploy del server. Para agregar palabras se toca solo este
+  archivo.
 - `src/games/wordbomb.ts` — `WordBombSim`: turnos, mecha (deadline absoluto),
   vidas, palabras usadas, validacion y orden de eliminacion. Difunde `wb:state`
   en cada cambio; el cliente anima la mecha localmente entre snapshots. Ver el

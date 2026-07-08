@@ -81,13 +81,22 @@ descubrirlo) y en el picker/votacion de salas como cualquier otro juego de sala.
 
 ## Diccionario y fragmentos (server-side)
 
-`server/src/dictionary.ts` carga `an-array-of-spanish-words` (~636k palabras),
-normaliza (minuscula, saca acentos de vocales y dieresis pero **conserva la ñ**,
-descarta lo que no sea `[a-zñ]`) y **precomputa los fragmentos jugables**: todas
-las subcadenas de 2-3 letras que existen en al menos `MIN_WORDS_PER_FRAGMENT`
-(500) palabras (~1800 fragmentos). Asi nunca se ofrece un reto sin solucion. Una
-palabra es valida si (contiene el fragmento) + (esta en el diccionario) + (no se
-uso antes en la partida).
+`server/src/dictionary.ts` carga `an-array-of-spanish-words` (~636k palabras)
+**mas las palabras extra de `server/src/extra-words.ts`**, normaliza (minuscula,
+saca acentos de vocales y dieresis pero **conserva la ñ**, descarta lo que no sea
+`[a-zñ]`) y **precomputa los fragmentos jugables**: todas las subcadenas de 2-3
+letras que existen en al menos `MIN_WORDS_PER_FRAGMENT` (500) palabras (~1800
+fragmentos). Asi nunca se ofrece un reto sin solucion. Una palabra es valida si
+(contiene el fragmento) + (esta en el diccionario) + (no se uso antes en la
+partida).
+
+**Agregar palabras**: editar el array `EXTRA_WORDS` en
+`server/src/extra-words.ts` (jerga, regionalismos, terminos que el diccionario
+base no trae). Se normalizan y suman igual que el resto via el helper `ingest`;
+sumar palabras las hace **validas como respuesta** pero no crea fragmentos nuevos
+(eso depende de `MIN_WORDS_PER_FRAGMENT`; una lista corta no llega al umbral).
+El diccionario se arma al arrancar el proceso, asi que **hay que redeployar el
+server en Railway** tras editar.
 
 ## Tuning (server, `server/src/games/wordbomb.ts`)
 

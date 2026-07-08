@@ -1,12 +1,16 @@
 import { createRequire } from "node:module";
+import { EXTRA_WORDS } from "./extra-words.js";
 
 /**
  * Diccionario de espanol embebido en el server (an-array-of-spanish-words:
- * ~636k palabras). Vive SOLO aca: la validacion de palabras es autoritativa y no
- * spoofeable, y el diccionario nunca pesa en el bundle del front.
+ * ~636k palabras) mas las palabras extra de `extra-words.ts`. Vive SOLO aca: la
+ * validacion de palabras es autoritativa y no spoofeable, y el diccionario nunca
+ * pesa en el bundle del front.
  *
  * Se carga con createRequire porque el paquete es un index.json plano (un array
- * de strings), mas robusto que un import JSON con attributes en ESM.
+ * de strings), mas robusto que un import JSON con attributes en ESM. Para agregar
+ * palabras que el diccionario base no trae, editar `extra-words.ts` (no hace
+ * falta tocar este archivo).
  */
 const require = createRequire(import.meta.url);
 const RAW: string[] = require("an-array-of-spanish-words");
@@ -36,23 +40,27 @@ const WORDS = new Set<string>();
 /** Fragmento -> cantidad de palabras que lo contienen (solo los jugables). */
 const FRAGMENTS: string[] = [];
 
-function build(): void {
-  const counts = new Map<string, number>();
-  for (const raw of RAW) {
-    const w = normalize(raw);
-    if (w.length < 3) continue; // palabras muy cortas no aportan como respuesta
-    WORDS.add(w);
-    // Substrings distintos de este palabra, para no contar dos veces "ana" en "banana".
-    const seen = new Set<string>();
-    for (const len of FRAGMENT_LENGTHS) {
-      for (let i = 0; i + len <= w.length; i++) {
-        const frag = w.slice(i, i + len);
-        if (seen.has(frag)) continue;
-        seen.add(frag);
-        counts.set(frag, (counts.get(frag) ?? 0) + 1);
-      }
+/** Suma una palabra al set y cuenta sus fragmentos (2-3 letras) una sola vez. */
+function ingest(raw: string, counts: Map<string, number>): void {
+  const w = normalize(raw);
+  if (w.length < 3) return; // palabras muy cortas no aportan como respuesta
+  WORDS.add(w);
+  // Substrings distintos de esta palabra, para no contar dos veces "ana" en "banana".
+  const seen = new Set<string>();
+  for (const len of FRAGMENT_LENGTHS) {
+    for (let i = 0; i + len <= w.length; i++) {
+      const frag = w.slice(i, i + len);
+      if (seen.has(frag)) continue;
+      seen.add(frag);
+      counts.set(frag, (counts.get(frag) ?? 0) + 1);
     }
   }
+}
+
+function build(): void {
+  const counts = new Map<string, number>();
+  for (const raw of RAW) ingest(raw, counts);
+  for (const raw of EXTRA_WORDS) ingest(raw, counts); // palabras extra editables
   for (const [frag, n] of counts) {
     if (n >= MIN_WORDS_PER_FRAGMENT) FRAGMENTS.push(frag);
   }
