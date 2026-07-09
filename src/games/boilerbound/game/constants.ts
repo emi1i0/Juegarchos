@@ -19,6 +19,12 @@ export const PLAYER_HALF_WIDTH = 0.42; // visual half-width (wall / room collisi
  *  the lethal band sits *inside* the visible steam. */
 export const HURTBOX_HALF_WIDTH = 0.24;
 export const PLAYER_HEIGHT = 1.3;
+/** Purely a render offset added on top of the logical `y` (never to `y` itself):
+ *  the vents' grille top sits ~0.14-0.17 above FLOOR_Y (see `vent.py`'s H=0.16
+ *  and the fallback grille box), and since the grilles tile the *entire* floor
+ *  edge to edge (no gaps), this is a constant lift everywhere — not per-tile
+ *  terrain, so it needs no walk animation. Physics/collision keep using `y`. */
+export const PLAYER_GRILLE_LIFT = 0.15;
 export const PLAYER_SPEED = 9.5; // horizontal run speed (units/s)
 export const PLAYER_ACCEL = 90; // how fast we reach run speed on the ground
 export const PLAYER_AIR_ACCEL = 78; // air steering — strong enough to redirect to a safe landing

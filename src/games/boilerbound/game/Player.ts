@@ -19,6 +19,7 @@ import {
   PLAYER_ACCEL,
   PLAYER_AIR_ACCEL,
   PLAYER_FRICTION,
+  PLAYER_GRILLE_LIFT,
   PLAYER_HALF_WIDTH,
   PLAYER_HEIGHT,
   PLAYER_SPEED,
@@ -132,6 +133,13 @@ export class Player {
     return HURTBOX_HALF_WIDTH;
   }
 
+  /** Visual foot height (logical `y` + the grille-standing lift). Use this, not
+   *  `y`, when positioning cosmetic effects (sparks, bursts) at the character's
+   *  feet — `y` itself stays the physics/collision value. */
+  get visualY(): number {
+    return this.y + PLAYER_GRILLE_LIFT;
+  }
+
   get invulnerable(): boolean {
     return this.invuln > 0;
   }
@@ -145,7 +153,7 @@ export class Player {
     this.dashTime = this.invuln = this.dashCooldown = 0;
     this.canCut = false;
     this.coyote = this.jumpBuffer = 0;
-    this.object.position.set(0, FLOOR_Y, 0);
+    this.object.position.set(0, FLOOR_Y + PLAYER_GRILLE_LIFT, 0);
     this.object.rotation.z = 0;
   }
 
@@ -245,7 +253,7 @@ export class Player {
     }
 
     // --- Visuals. ---
-    this.object.position.set(this.x, this.y, 0);
+    this.object.position.set(this.x, this.visualY, 0);
     // Lean into a dash, flash the goggle during i-frames.
     const lean = this.dashTime > 0 ? 0.5 * this.dashDir : 0;
     this.object.rotation.z = -lean;

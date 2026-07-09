@@ -180,7 +180,7 @@ export class Game {
     SoundEffects.playDeath();
 
     const px = this.player.x;
-    const py = this.player.y + 0.7;
+    const py = this.player.visualY + 0.7;
     this.particles.burst(px, py, 24, { speed: 8, up: 3, gravity: 20, color: new THREE.Color(0xffffff) });
     this.particles.burst(px, py, 16, { speed: 6, up: 2, gravity: 22, color: new THREE.Color(WARNING_COLOR) });
     this.emergencyLight.position.set(px, py, 3);
@@ -227,7 +227,7 @@ export class Game {
       if (events.jumped) SoundEffects.playJump();
       if (events.dashed) {
         SoundEffects.playDash();
-        this.particles.burst(this.player.x, this.player.y + 0.5, 8, {
+        this.particles.burst(this.player.x, this.player.visualY + 0.5, 8, {
           speed: 4,
           gravity: 8,
           color: new THREE.Color(0x2ad6ff),
