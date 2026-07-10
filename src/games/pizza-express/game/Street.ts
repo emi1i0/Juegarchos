@@ -22,6 +22,7 @@ import {
 
 const ROAD_TILE = 11; // world length of one road-texture tile
 const GRASS_TILE = 22;
+const GRASS_WORLD_TILE = 30; // world size of one grass-mottling tile (big = calm)
 const GROUND_LENGTH = 260;
 const WRAP_AHEAD = SCENERY_SPAN; // how far a passed cluster jumps back
 
@@ -335,23 +336,65 @@ function makeRoadTexture(): THREE.CanvasTexture {
 }
 
 function makeGrassTexture(): THREE.CanvasTexture {
-  const s = 128;
+  // The grass is deliberately STATIC while everything around it scrolls, so its
+  // pattern must make that stillness *visible*: big, soft, meters-wide mottling
+  // the eye can lock onto. Fine uniform speckle (the old texture) gives no such
+  // anchor — surrounded by motion it gets perceptually dragged along ("motion
+  // capture" illusion) and the grass looks like it slides with the road. So:
+  // low-frequency blotches only, no high-frequency noise (which also shimmers).
+  const s = 256;
   const canvas = document.createElement("canvas");
   canvas.width = s;
   canvas.height = s;
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = "#4f8a3a";
   ctx.fillRect(0, 0, s, s);
-  for (let i = 0; i < 1400; i++) {
-    const light = Math.random() < 0.5;
-    ctx.fillStyle = light ? "rgba(120,170,70,0.35)" : "rgba(45,90,35,0.4)";
-    ctx.fillRect(Math.random() * s, Math.random() * s, 2, 3);
+
+  // Draws a soft radial blob wrapped across the tile edges (seamless repeat).
+  const blob = (x: number, y: number, r: number, rgba: string) => {
+    for (const ox of [-s, 0, s]) {
+      for (const oy of [-s, 0, s]) {
+        const g = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        g.addColorStop(0, rgba);
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x + ox, y + oy, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  };
+
+  // Large sun-warmed / shaded patches (~5-11 world units across at the repeat
+  // below) — the static landmarks.
+  for (let i = 0; i < 12; i++) {
+    blob(Math.random() * s, Math.random() * s, s * (0.16 + Math.random() * 0.14), "rgba(126,172,74,0.42)");
   }
+  for (let i = 0; i < 12; i++) {
+    blob(Math.random() * s, Math.random() * s, s * (0.14 + Math.random() * 0.13), "rgba(46,92,36,0.44)");
+  }
+  // A second, smaller octave for nearby richness — still soft, never speckle.
+  for (let i = 0; i < 30; i++) {
+    const light = Math.random() < 0.5;
+    blob(
+      Math.random() * s,
+      Math.random() * s,
+      s * (0.04 + Math.random() * 0.05),
+      light ? "rgba(138,182,84,0.30)" : "rgba(54,100,40,0.32)",
+    );
+  }
+
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(20, GROUND_LENGTH / GRASS_TILE);
+  // Anisotropic filtering keeps the blotches readable at the camera's grazing
+  // angle (plain trilinear mips wash them flat a few meters out). THREE clamps
+  // the value to the hardware max.
+  tex.anisotropy = 8;
+  // Big world tile so the blotches read at meter scale (small tiles turn them
+  // back into shimmery noise).
+  tex.repeat.set(140 / GRASS_WORLD_TILE, GROUND_LENGTH / GRASS_WORLD_TILE);
   return tex;
 }
 
