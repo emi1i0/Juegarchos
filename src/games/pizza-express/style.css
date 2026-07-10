@@ -59,7 +59,9 @@ body::after {
 
 .hud {
   position: absolute;
-  top: 18px;
+  /* Below the room-mode top strip (~38px tall, fixed top-centre), so the score
+     card never sits under it during salas rounds. */
+  top: 48px;
   left: 50%;
   transform: translateX(-50%);
   pointer-events: none;
