@@ -5,9 +5,10 @@ suburb ("Cheesetown"). You ride a red delivery scooter down an endless street:
 **steer left/right to dodge road hazards** (instant death on contact) and **throw
 pizzas at roadside mailboxes** that have a pending order (marked by a bright
 downward **arrow**). Deliveries score points with a **combo multiplier**. A
-customer passed undelivered breaks the combo **and costs a token**: you have a
-one-time **shield** plus **3 pizza tokens** (shown top-left) — run out and the run
-ends. It is a single infinite level whose speed, hazard density and customer pace
+customer passed undelivered breaks the combo **and costs a token**. During the
+10-second tutorial a **shield** (shown top-left) cushions misses; once the tutorial
+ends the shield is gone and you run on **3 pizza tokens** — lose all three and the
+run ends. It is a single infinite level whose speed, hazard density and customer pace
 **ramp fast** after a 10-second tutorial. It is **PC-oriented** (keyboard; no
 touch button). Solo score is total points (higher is better, default board). Art
 direction: `DESIGN.md` ("Golden Hour Delivery"), based on the game's cover.
@@ -80,15 +81,17 @@ the road surface is `y = 0`. The scooter only moves in **X** (steering).
   `DELIVERY_BASE_POINTS × combo`; the combo climbs (capped at `COMBO_MAX`) with
   each delivery. Throw has a `THROW_COOLDOWN`.
 - **Miss allowance:** a pending customer that passes you undelivered **resets the
-  combo to 0 and spends a token**. The one-time **shield** (`shieldActive`) absorbs
-  the first miss; after that each miss costs a pizza (`pizzasLeft`, from
-  `MISS_PIZZAS`), and running out ends the run (game over, "misses" reason). This
-  is the second failure mode besides crashing.
+  combo to 0 and spends a token**. The **shield** (`shieldActive`) is a
+  *tutorial-only* cushion — it **disappears the moment the tutorial ends**
+  (`updateTutorial`). In the real game each miss costs a pizza (`pizzasLeft`, from
+  `MISS_PIZZAS`) and running out ends the run (game over, "misses" reason). This is
+  the second failure mode besides crashing.
 - **Tutorial (first `TUTORIAL_SECONDS`):** a gentle intro — **no lethal
   obstacles**, two thought-bubble hints (throw controls, then "position yourself on
-  the side you want to throw to"), and misses are **free** (they only spend the
-  shield, never a pizza, and can't end the run). The speed and difficulty ramp
-  start **after** the tutorial (`playT = elapsed − TUTORIAL_SECONDS`).
+  the side you want to throw to"), and misses are **free** (only the shield can be
+  spent, never a pizza, and it can't end the run). When the tutorial ends the shield
+  vanishes and the speed + difficulty ramp start (`playT = elapsed −
+  TUTORIAL_SECONDS`).
 - **Score** = total points (deliveries × combo). Higher is better, default board.
 
 ## Non-obvious decisions

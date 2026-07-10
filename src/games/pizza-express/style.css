@@ -258,6 +258,12 @@ body::after {
   filter: grayscale(0.85) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
 }
 
+/* The shield is a one-time tutorial cushion: once spent it disappears entirely
+   (the pizza tokens stay greyed like remaining lives). */
+.token--shield.is-spent {
+  display: none;
+}
+
 /* Character thought bubble (tutorial hints). */
 .bubble {
   position: absolute;
@@ -284,29 +290,4 @@ body::after {
 .bubble.is-shown {
   opacity: 1;
   transform: translate(-50%, 0);
-}
-
-/* Thought-bubble tail: two little puffs pointing down at the character. */
-.bubble::before,
-.bubble::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  border-radius: 50%;
-  background: #fff3dc;
-  border: 3px solid #8a5a2b;
-}
-
-.bubble::before {
-  width: 16px;
-  height: 16px;
-  bottom: -22px;
-  transform: translateX(-14px);
-}
-
-.bubble::after {
-  width: 10px;
-  height: 10px;
-  bottom: -38px;
-  transform: translateX(2px);
 }

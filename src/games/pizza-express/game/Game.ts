@@ -271,6 +271,12 @@ export class Game {
 
   /** Drives the two tutorial thought bubbles over the first `TUTORIAL_SECONDS`. */
   private updateTutorial(): void {
+    // The shield is only the tutorial cushion — it vanishes when the tutorial
+    // ends, so the real game runs on the 3 pizza tokens alone.
+    if (this.elapsed >= TUTORIAL_SECONDS && this.shieldActive) {
+      this.shieldActive = false;
+      this.hud.setTokens(false, this.pizzasLeft);
+    }
     let text: string | null = null;
     if (this.elapsed < 5) text = "W / ↑ / Espacio para lanzar la pizza";
     else if (this.elapsed < TUTORIAL_SECONDS) text = "Ponete del lado de la calle al que querés tirar";
