@@ -41,7 +41,8 @@ export class MailboxField {
     let missed = 0;
     for (const b of this.boxes) {
       b.update(dz, dt);
-      if (b.pending && b.z > MAILBOX_MISS_Z) {
+      // A box with a pizza already on the way (reserved) is not a miss.
+      if (b.pending && !b.reserved && b.z > MAILBOX_MISS_Z) {
         b.markMissed();
         missed++;
       }
@@ -68,12 +69,14 @@ export class MailboxField {
     return missed;
   }
 
-  /** The best pending customer to auto-aim a thrown pizza at: the closest one
-   *  still ahead of the scooter and within throwing range. */
-  nearestPendingTarget(): Mailbox | null {
+  /** The best pending customer to auto-aim a thrown pizza at **on the given side**
+   *  of the street: the closest one still ahead of the scooter, within throwing
+   *  range and not already reserved by another pizza. Null if none — a throw to a
+   *  side with no such customer is "errant". */
+  nearestPendingTarget(side: -1 | 1): Mailbox | null {
     let best: Mailbox | null = null;
     for (const b of this.boxes) {
-      if (!b.pending) continue;
+      if (!b.pending || b.reserved || b.side !== side) continue;
       if (b.z > MAILBOX_MISS_Z || b.z < -THROW_RANGE_Z) continue;
       if (!best || b.z > best.z) best = b; // greatest z = closest / most urgent
     }

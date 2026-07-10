@@ -79,7 +79,7 @@ export const MAILBOX_MISS_Z = 3.5;
 
 // --- Throwing pizzas ---
 export const THROW_COOLDOWN = 0.22; // seconds between throws
-export const PIZZA_FLIGHT_TIME = 0.42; // seconds a pizza takes to reach its target
+export const PIZZA_FLIGHT_TIME = 0.36; // seconds a pizza takes to reach its target
 export const PIZZA_ARC_HEIGHT = 2.2; // peak height of the parabola
 export const PIZZA_ACTIVE_MAX = 12; // pool size
 export const DELIVER_RADIUS = 1.6; // how close a pizza must arc to a mailbox

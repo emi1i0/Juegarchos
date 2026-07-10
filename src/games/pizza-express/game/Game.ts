@@ -151,9 +151,14 @@ export class Game {
   private handleThrow(): void {
     if (this.state !== "playing" || this.throwCooldown > 0) return;
     this.throwCooldown = THROW_COOLDOWN;
-    const target = this.mailboxes.nearestPendingTarget();
+    // Deliver to the customer on the side of the street the scooter is on. If
+    // there is none in range, the throw is wasted (an "errant" pizza).
+    const side: -1 | 1 = this.scooter.x >= 0 ? 1 : -1;
+    const target = this.mailboxes.nearestPendingTarget(side);
+    if (target) target.reserved = true;
     this.thrower.throw(this.scooter.throwOrigin(), target);
     SoundEffects.playThrow();
+    if (!target) this.onErrantPizza();
   }
 
   private deliver(mailbox: Mailbox): void {
@@ -167,10 +172,18 @@ export class Game {
     this.particles.burst(p.x, p.y + 0.2, p.z, COLOR_CHEESE, 22, 3.2, 3.4);
   }
 
-  /** A customer passed undelivered: break the combo and spend a token. The shield
-   *  absorbs the first miss (and misses are free during the tutorial); running out
-   *  of pizzas after the tutorial ends the run. */
+  /** A customer passed by unserved: just lose the combo. No token cost — only
+   *  errant throws spend pizzas. */
   private onCustomerMissed(): void {
+    this.combo = 0;
+    this.hud.setCombo(0);
+  }
+
+  /** A thrown pizza that didn't land on a customer (wrong side / no customer in
+   *  range): break the combo and spend a token. The shield absorbs it first (and
+   *  it's free during the tutorial); running out of pizzas after the tutorial ends
+   *  the run. */
+  private onErrantPizza(): void {
     this.combo = 0;
     this.hud.setCombo(0);
     SoundEffects.playMiss();
@@ -305,10 +318,7 @@ export class Game {
       this.street.scroll(dz, dt);
 
       const missed = this.mailboxes.update(dt, dz, d);
-      for (let m = 0; m < missed; m++) {
-        this.onCustomerMissed();
-        if (this.state !== "playing") break; // ran out of pizzas
-      }
+      if (missed > 0) this.onCustomerMissed();
       this.thrower.update(dt);
 
       // No lethal obstacles during the tutorial (safe learning window).

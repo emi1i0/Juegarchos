@@ -20,6 +20,8 @@ export class Mailbox {
   readonly side: -1 | 1;
   pending = true;
   missed = false;
+  /** A pizza is in flight toward this box, so it must not be marked missed. */
+  reserved = false;
 
   private readonly marker: THREE.Group;
   private readonly flag: THREE.Mesh;
