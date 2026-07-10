@@ -234,7 +234,7 @@ export class Game {
    */
   private onEmote(player: string, emote: WbEmoteId): void {
     if (this.state !== "playing") return;
-    SoundEffects.playEmote();
+    SoundEffects.playEmote(emote);
     this.hud.showEmote(player, emote);
   }
 

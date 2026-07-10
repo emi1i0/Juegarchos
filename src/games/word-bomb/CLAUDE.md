@@ -110,6 +110,11 @@ cerrado (`risa` / `sorpresa` / `enojo` / `burla` / `llanto`) y cada cara esta
   burlandose es medio la gracia) y tambien el de turno. **Los espectadores no**: nunca
   llegan a conectar al game server, porque `RoomMode.applyState` corta antes de
   `autoStartGame` para ellos y `onStart` (que dispara el `connect()`) jamas se llama.
+- **Sonido**: cada reaccion tiene su voz sintetizada en `SoundEffects.playEmote(id)`
+  (risa de tres silabas, "oh!" que sube, gruñido grave, cantito de burla, dos
+  sollozos). Suenan para todos, asi que van bajas (pico <= 0.09) y cortas; el
+  cooldown de 1s por jugador es lo que evita que se apilen. `blip()` acepta un
+  `delay` para encadenar silabas.
 - **Como**: dock de cabecitas abajo (`.wb__emotes`, z-index por encima del input
   invisible) o atajos **1-5**. Los atajos escuchan en `window` y hacen `preventDefault`,
   lo que cancela la insercion del digito en el input del jugador de turno — no se

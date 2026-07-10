@@ -93,7 +93,10 @@ expansiva + esquirlas + sacudida de la bomba, ~700ms) y sigue el turno. La energ
 esta en el calor del centro y en el foco que salta de jugador en jugador; nada de
 rebotes elasticos. Al **reaccionar**, el personaje cambia de cara y pega un **salto
 corto** (~380ms, con overshoot): el unico rebote elastico permitido, porque es la voz
-del jugador y tiene que verse desde el otro lado de la ronda.
+del jugador y tiene que verse desde el otro lado de la ronda. Y **se escucha**: cada
+cara trae su propia voz sintetizada (la risa en tres silabas, el gruñido grave del
+enojo), siempre por debajo de la mecha y la explosion — subraya el gesto, no compite
+con la partida.
 
 ## Que evitar
 
