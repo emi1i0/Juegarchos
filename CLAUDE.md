@@ -137,8 +137,10 @@ Estructura de `server/` (paquete propio, aislado del build de Vite, con su propi
   archivo.
 - `src/games/wordbomb.ts` — `WordBombSim`: turnos, mecha (deadline absoluto),
   vidas, palabras usadas, validacion y orden de eliminacion. Difunde `wb:state`
-  en cada cambio; el cliente anima la mecha localmente entre snapshots. Ver el
-  `CLAUDE.md` de `word-bomb` para el detalle del flujo y el tuning.
+  en cada cambio; el cliente anima la mecha localmente entre snapshots. Ademas
+  retransmite las **reacciones** (`wb:emote`): puro relay validado contra un
+  allowlist de ids, con cooldown por jugador, que **no** viaja en `wb:state` (es
+  efimera). Ver el `CLAUDE.md` de `word-bomb` para el detalle del flujo y el tuning.
 - `src/games/pong.ts` — `PongSim`: empareja la sala de a dos (un `Match` por par;
   el impar juega vs IA del server), corre la fisica de la pelota / colisiones /
   rampa / puntaje a ~30 fps y emite `pg:state` a cada jugador con su lado. La

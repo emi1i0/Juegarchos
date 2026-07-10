@@ -57,6 +57,11 @@ export class SoundEffects {
     blip("square", 110, 0.28, 0.16, 55);
   }
 
+  /** Reaccion de un jugador: un "pop" corto y suave (no debe tapar la partida). */
+  static playEmote(): void {
+    blip("sine", 420, 0.07, 0.05, 780);
+  }
+
   /** Paso de turno: un tic breve. */
   static playTurn(): void {
     blip("sine", 520, 0.05, 0.05);

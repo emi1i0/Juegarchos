@@ -44,6 +44,15 @@ export interface WbState {
 /** Motivo por el que se rechazo un intento (feedback privado al que lo mando). */
 export type WbRejectReason = "not-a-word" | "missing-fragment" | "already-used" | "not-your-turn";
 
+/**
+ * Reacciones: el jugador cambia la cara de su personaje por un instante. Es un id
+ * de un set cerrado (no texto libre, no emojis: el repo los prohibe y las caras se
+ * dibujan en el SVG del personaje). El server solo las retransmite -- no tocan el
+ * estado de la partida -- validando el id contra el allowlist y con un cooldown por
+ * jugador. Se duplican en el cliente (game/constants.ts + game/WordBombTransport.ts).
+ */
+export type WbEmoteId = "risa" | "sorpresa" | "enojo" | "burla" | "llanto";
+
 export interface WbGameover {
   /** Puesto por jugador: 1 = ganador (ultimo en pie). */
   ranking: { nickname: string; place: number }[];
@@ -55,6 +64,8 @@ export interface WbClientToServer {
   "wb:submit": (msg: { word: string }) => void;
   /** Texto en vivo del jugador de turno (se retransmite tal cual, sin validar). */
   "wb:typing": (msg: { text: string }) => void;
+  /** Reaccion del jugador (id del allowlist; el server la valida y la difunde). */
+  "wb:emote": (msg: { emote: WbEmoteId }) => void;
 }
 
 /** Server -> Cliente. */
@@ -62,6 +73,7 @@ export interface WbServerToClient {
   "wb:state": (state: WbState) => void;
   "wb:invalid": (msg: { reason: WbRejectReason }) => void;
   "wb:typing": (msg: { player: string; text: string }) => void;
+  "wb:emote": (msg: { player: string; emote: WbEmoteId }) => void;
   "wb:gameover": (msg: WbGameover) => void;
 }
 

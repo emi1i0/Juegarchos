@@ -1,7 +1,7 @@
 import "../style.css";
 import { games } from "../games";
 import { isLeaderboardEnabled } from "../shared/supabase";
-import { fetchGameLeaders, type LeaderRow } from "../shared/leaders";
+import { fetchGameLeaders, cachedGameLeaders, type LeaderRow } from "../shared/leaders";
 
 /**
  * Pagina dedicada del Salon de la fama (/fame/): ranking de quienes lideran el
