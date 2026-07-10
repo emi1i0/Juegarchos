@@ -93,9 +93,12 @@ the road surface is `y = 0`. The scooter only moves in **X** (steering).
   the leaderboard panel. No throw button (PC-oriented).
 - `game/SoundEffects.ts` — synthesized Web Audio (countdown tick, throw whoosh,
   delivery ding whose pitch rises with the combo, miss blip, crash), no assets.
-  Plus the **2-stroke moped engine loop**: a persistent node graph (two detuned
-  saws at the firing rate + band-passed exhaust noise amplitude-chopped at that
-  same rate + a slow LFO putter), started by `startEngine()` in `startGame`,
+  Plus the **2-stroke moped engine loop**: a persistent node graph tuned as a
+  high MOSQUITO whine, not a low drone (idle ~95 Hz, flat out ~235 Hz — a first
+  52-128 Hz version read as a small plane): two detuned saws at the firing rate
+  + an octave-up "whine" saw + a highpass stripping the boomy lows + band-passed
+  exhaust noise amplitude-chopped at the firing rate + a slow LFO putter.
+  Started by `startEngine()` in `startGame`,
   revved via `setEngineSpeed(t)` each playing tick (t = normalized travel speed,
   so the pitch climbs with the ramp), and cut by `stopEngine()` in `endGame`
   (both the crash and the out-of-pizzas endings) and in `beginCountdown` (safety
