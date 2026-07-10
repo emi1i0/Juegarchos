@@ -99,6 +99,7 @@ export class Game {
     this.room = initRoomMode("cannon-dodge", {
       getScore: () => this.score,
       onStart: () => this.beginCountdown(),
+      onReportedWaiting: () => this.state === "dead",
     });
     this.me = this.room?.me ?? "";
     if (this.room) void this.setupRoom();
@@ -223,6 +224,7 @@ export class Game {
     this.lastCountdownIndex = -1;
     this.shakeTime = 0;
     this.hud.showTime(false);
+    this.hud.hideSpectate();
     this.hud.hide();
     this.hud.showCountdown(COUNTDOWN_LABELS[0]);
   }
@@ -255,9 +257,16 @@ export class Game {
     // heartbeat keeps re-sending this while we're dead).
     this.emitPos(false);
 
-    this.hud.showGameOver(this.score, this.best);
-    if (this.room) this.room.reportScore(this.score);
-    else this.hud.showRanking("cannon-dodge", this.score);
+    if (this.room) {
+      // En sala el naufrago se queda mirando: la isla sigue simulandose (misma
+      // semilla que los demas) y `onReportedWaiting` tapa la pantalla generica
+      // de espera, asi que solo mostramos una banda con el puntaje.
+      this.hud.showSpectate(this.score);
+      this.room.reportScore(this.score);
+    } else {
+      this.hud.showGameOver(this.score, this.best);
+      this.hud.showRanking("cannon-dodge", this.score);
+    }
   }
 
   private tick = (now: number): void => {
@@ -275,13 +284,7 @@ export class Game {
 
     if (this.state === "playing") {
       this.player.update(dt, this.input.vecX, this.input.vecY);
-      const res = this.field.update(dt, this.player);
-
-      if (res.spawned > 0) SoundEffects.playAppear();
-      for (const f of res.fired) {
-        SoundEffects.playBoom();
-        this.particles.smoke(f.x + f.dx * MUZZLE_OFFSET, f.y + f.dy * MUZZLE_OFFSET, f.dx, f.dy);
-      }
+      const res = this.stepField(dt);
 
       this.score += dt;
       this.hud.setTime(this.score);
@@ -295,8 +298,23 @@ export class Game {
       this.updateCountdown(dt);
     } else if (this.state === "dead") {
       this.deadFor += dt;
+      // Espectando en sala: los cañones siguen disparando (mismo mundo sembrado
+      // que el de los vivos) para ver como esquivan. El choque contra nuestro
+      // naufrago se ignora, ya estamos muertos.
+      if (this.room) this.stepField(dt);
       this.updateRemotes(dt);
     }
+  }
+
+  /** Avanza cañones y balas, con el sonido y el humo de cada disparo. */
+  private stepField(dt: number) {
+    const res = this.field.update(dt, this.player);
+    if (res.spawned > 0) SoundEffects.playAppear();
+    for (const f of res.fired) {
+      SoundEffects.playBoom();
+      this.particles.smoke(f.x + f.dx * MUZZLE_OFFSET, f.y + f.dy * MUZZLE_OFFSET, f.dx, f.dy);
+    }
+    return res;
   }
 
   /** Advances the countdown, updating the label and starting play when done. */

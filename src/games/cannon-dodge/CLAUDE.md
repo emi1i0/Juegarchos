@@ -85,12 +85,21 @@ shared pattern (see root `CLAUDE.md`).
 ## Room mode (multiplayer)
 
 Wired to the shared party mode: the constructor calls `initRoomMode("cannon-dodge",
-{ getScore: () => this.score, onStart: () => this.beginCountdown() })`. `getScore`
-is the live survival time so a timeout-cut round still reports the seconds
-survived. With `?room=` in the URL the game-over reports the score to the room
-instead of the global ranking, the restart input is blocked (one run per round),
-and the round auto-starts via `onStart`. Whoever survives longest wins the round.
-Without the param nothing changes.
+{ getScore, onStart, onReportedWaiting })`. `getScore` is the live survival time so
+a timeout-cut round still reports the seconds survived. With `?room=` in the URL the
+game-over reports the score to the room instead of the global ranking, the restart
+input is blocked (one run per round), and the round auto-starts via `onStart`.
+Whoever survives longest wins the round. Without the param nothing changes.
+
+**Muerto = espectador.** In room mode `die()` does not show the game-over overlay:
+it shows a bottom banner (`Hud.showSpectate`) with the final time and returns `true`
+from `onReportedWaiting`, which tells `RoomMode` to hide the generic "esperando a
+los demas" screen. The `dead` branch of `update()` keeps calling `stepField(dt)`, so
+the cannons and balls go on firing — being the same seeded world the survivors are
+playing, the pirates you watch are dodging exactly the shots you see. The collision
+result is ignored (we're already sunk) and the score clock is frozen at death. The
+banner is cleared in `beginCountdown()`; when the round closes, `RoomOverlay`'s
+results screen covers everything as usual.
 
 **Live view of the other players (Neon Drift model).** In room mode you don't
 dodge alone — you see every other player's pirate moving on the *same* island in
