@@ -40,10 +40,10 @@ export class Street {
   private readonly dirtTex: THREE.CanvasTexture;
   private readonly clusters: THREE.Group[] = [];
   private readonly clouds: { sprite: THREE.Mesh; speed: number }[] = [];
-  // Shared assets for the scrolling ground-detail tufts (one geom + two mats).
-  private readonly tuftGeo = new THREE.IcosahedronGeometry(0.2, 0);
-  private readonly tuftMat = toonMat(COLOR_FOLIAGE, {});
-  private readonly tuftMatDark = toonMat(COLOR_LEAF, {});
+  // Shared assets for the roadside bush border (one geom + two mats).
+  private readonly bushGeo = new THREE.IcosahedronGeometry(0.42, 0);
+  private readonly bushMat = toonMat(COLOR_FOLIAGE, {});
+  private readonly bushMatDark = toonMat(COLOR_LEAF, {});
 
   constructor() {
     this.roadTex = makeRoadTexture();
@@ -105,7 +105,7 @@ export class Street {
   private buildCluster(side: number, seed: number): THREE.Group {
     const g = new THREE.Group();
     g.add(this.buildFence(side));
-    g.add(this.buildGroundDetail(side, seed));
+    g.add(this.buildHedgeBorder(side, seed));
 
     const pick = Math.abs(Math.sin(seed * 12.9898) * 43758.5453) % 1;
     if (pick < 0.5) g.add(this.buildHouse(side, seed));
@@ -114,21 +114,23 @@ export class Street {
     return g;
   }
 
-  /** A scatter of small grass tufts on the near verge. They scroll with the prop
-   *  pool, so the ground reads as moving via discrete objects flying past instead
-   *  of a sliding texture sheet (see the note in `scroll`). */
-  private buildGroundDetail(side: number, seed: number): THREE.Group {
+  /** A broken row of raised bushes right at the road/grass boundary — the visual
+   *  **separation** between the (scrolling) road corridor and the (static) grass.
+   *  Being distinct 3-D clumps with gaps, they read as objects *passing by* as
+   *  they scroll, not as the grass surface sliding (which flat tufts did). */
+  private buildHedgeBorder(side: number, seed: number): THREE.Group {
     const g = new THREE.Group();
     const rnd = (n: number) => Math.abs(Math.sin((seed + n) * 91.7) * 4771.31) % 1;
-    for (let i = 0; i < 6; i++) {
-      const x = side * (ROAD_HALF_WIDTH + SHOULDER + 0.25 + rnd(i) * 3.4);
-      const z = -SCENERY_SPACING / 2 + rnd(i + 20) * SCENERY_SPACING;
-      const s = 0.5 + rnd(i + 40) * 0.8;
-      const clump = new THREE.Mesh(this.tuftGeo, rnd(i + 60) < 0.4 ? this.tuftMatDark : this.tuftMat);
-      clump.position.set(x, 0.02 + 0.12 * s, z);
-      clump.scale.set(s, s * 0.65, s);
-      clump.rotation.y = rnd(i + 80) * Math.PI;
-      g.add(clump);
+    const edgeX = ROAD_HALF_WIDTH + SHOULDER + 0.5;
+    for (let i = 0; i < 4; i++) {
+      // Spread along the cluster with a gap so the hedge reads as separate bushes.
+      const z = -SCENERY_SPACING / 2 + (i + 0.2 + rnd(i) * 0.5) * (SCENERY_SPACING / 4);
+      const s = 0.85 + rnd(i + 20) * 0.7;
+      const bush = new THREE.Mesh(this.bushGeo, rnd(i + 40) < 0.4 ? this.bushMatDark : this.bushMat);
+      bush.position.set(side * (edgeX + rnd(i + 60) * 0.35), 0.16 * s, z);
+      bush.scale.set(s, s * 0.8, s);
+      bush.rotation.y = rnd(i + 80) * Math.PI;
+      g.add(bush);
     }
     return g;
   }

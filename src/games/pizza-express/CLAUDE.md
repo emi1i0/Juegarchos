@@ -35,12 +35,14 @@ the road surface is `y = 0`. The scooter only moves in **X** (steering).
   shake, hidden scooter, game-over overlay **deferred 600 ms**).
 - `game/Street.ts` — the environment: the **road + dirt shoulders** scroll their
   canvas-texture UV for an endless surface (the moving dashes are the speed cue),
-  while the **grass stays still** — a sliding grass sheet looked cheap, so ground
-  motion instead comes from a scatter of **grass tufts** (`buildGroundDetail`) plus
-  a **wrapping pool** of roadside props (cottages, trees, hedges, fences, warm lamp
-  posts) streaming past on both sides. Plus a static dusk sky (gradient dome, low
-  sun + halo, drifting clouds, a hill silhouette baked into the sky texture).
-  Purely decorative.
+  while the **grass stays still** (a sliding grass sheet looked cheap — flat green
+  detail moving reads as the surface itself sliding). Instead, a broken row of
+  raised **bushes** (`buildHedgeBorder`) runs along the road/grass boundary as a
+  clear **separation**; being distinct 3-D clumps with gaps, they read as objects
+  *passing* as they scroll, and together with the **wrapping pool** of roadside
+  props (cottages, trees, hedges, fences, warm lamp posts) they carry the sense of
+  motion. Plus a static dusk sky (gradient dome, low sun + halo, drifting clouds, a
+  hill silhouette baked into the sky texture). Purely decorative.
 - `game/Scooter.ts` — the player: a primitive red scooter + rider (red cap,
   delivery box on the rear rack) cel-shaded; X steering with velocity smoothing,
   lean + yaw into turns, engine idle bob, spinning wheels, a headlight. Exposes
