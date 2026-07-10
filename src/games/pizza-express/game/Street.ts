@@ -22,8 +22,8 @@ import {
 
 const ROAD_TILE = 11; // world length of one road-texture tile
 const GRASS_TILE = 22;
-// Static meadow decor starts at this |x|, past the outer edge of everything that
-// scrolls (houses reach ~12.5), so the wrapping clusters never pass through it.
+// Meadow decor starts at this |x|, past the outer edge of the house/tree
+// clusters (~12.5), so the two prop pools never overlap.
 const MEADOW_MIN_X = 13;
 const GROUND_LENGTH = 260;
 const WRAP_AHEAD = SCENERY_SPAN; // how far a passed cluster jumps back
@@ -60,10 +60,11 @@ export class Street {
 
   // --- Ground: static grass + scrolling road strip + dirt shoulders. Only the
   //     road/dirt scroll their UV; the grass stays still (see `scroll`). The
-  //     grass is a deliberately FLAT solid green: any texture on it (even big
-  //     soft mottling — tried) gets perceptually dragged along by the motion
-  //     around it and reads as sliding. Featureless, it cannot look like it
-  //     moves; the static meadow decor (`buildMeadow`) carries the stillness. ---
+  //     grass is a deliberately FLAT solid green: any texture on it (fine noise
+  //     and big soft mottling were both tried) gets perceptually dragged along
+  //     by the motion around it and reads as the sheet itself sliding.
+  //     Featureless, it cannot look like it moves — motion over the grass comes
+  //     only from discrete objects passing (clusters + meadow props). ---
   private buildGround(): void {
     const grass = new THREE.Mesh(
       new THREE.PlaneGeometry(140, GROUND_LENGTH),
@@ -250,29 +251,32 @@ export class Street {
     return g;
   }
 
-  /** Static little trees + bushes scattered over the still grass, all beyond
-   *  `MEADOW_MIN_X` so the scrolling clusters never intersect them. Fixed in
-   *  world space, they are the landmarks that prove the grass is not moving —
-   *  and being distant-and-still they read naturally as far scenery while the
-   *  near town streams past. */
+  /** Little trees + bushes filling the meadow beyond the house line, on their
+   *  own (denser) Z grid. They join `this.clusters`, so they scroll and wrap
+   *  exactly like the houses — everything on the grass streams past together;
+   *  only the featureless grass sheet itself stands still. All beyond
+   *  `MEADOW_MIN_X` so they never overlap the house/tree clusters. */
   private buildMeadow(): void {
     const rnd = (n: number) => Math.abs(Math.sin(n * 127.1 + 311.7) * 43758.5453) % 1;
     let i = 0;
     for (const side of [-1, 1]) {
-      for (let z = -105; z < 6; z += 4.2 + rnd(i) * 3.8, i++) {
+      for (let z = SCENERY_SPAWN_Z; z < SCENERY_SPAWN_Z + SCENERY_SPAN; z += 4.2 + rnd(i) * 3.8, i++) {
+        const g = new THREE.Group();
+        g.position.set(0, 0, z + rnd(i + 0.7) * 3);
         // Quadratic bias keeps most props near the visible inner meadow band.
         const x = side * (MEADOW_MIN_X + Math.pow(rnd(i + 0.3), 2) * 26);
-        const zz = z + rnd(i + 0.7) * 3;
         if (rnd(i + 0.5) < 0.45) {
-          this.group.add(this.buildMeadowTree(x, zz, 0.85 + rnd(i + 0.9) * 0.6));
+          g.add(this.buildMeadowTree(x, 0, 0.85 + rnd(i + 0.9) * 0.6));
         } else {
           const s = 1.1 + rnd(i + 1.3) * 1.3;
           const bush = new THREE.Mesh(this.bushGeo, rnd(i + 1.7) < 0.35 ? this.bushMatDark : this.bushMat);
-          bush.position.set(x, 0.16 * s, zz);
+          bush.position.set(x, 0.16 * s, 0);
           bush.scale.set(s, s * 0.85, s);
           bush.rotation.y = rnd(i + 2.1) * Math.PI;
-          this.group.add(bush);
+          g.add(bush);
         }
+        this.clusters.push(g);
+        this.group.add(g);
       }
     }
   }
