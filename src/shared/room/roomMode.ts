@@ -1,5 +1,5 @@
 import { games, roomGames, coverUrl } from "../../games";
-import { formatScore } from "../scoring";
+import { formatScore, getDirection } from "../scoring";
 import { getNickname } from "../nickname";
 import { getSupabase } from "../supabase";
 import {
@@ -20,6 +20,7 @@ import {
 import { RoomChannel } from "./channel";
 import { RoomOverlay, type StripLight, type WaitingEntry } from "./RoomOverlay";
 import { computeTotals, rankRound } from "./points";
+import { clearRoomRuns } from "./roomRun";
 import {
   formatRoundTimeLimit,
   HEARTBEAT_MS,
@@ -356,6 +357,11 @@ class RoomModeController implements RoomMode {
     if (!this.state || this.navigating) return;
     const room = this.state.room;
 
+    // Ninguna ronda en curso: los snapshots de partida (roomRun) ya no valen. Hay
+    // que tirarlos aca porque la revancha vuelve a numerar desde la ronda 1 y
+    // reusaria la misma clave (ver clearRoomRuns).
+    if (room.status === "lobby" || room.status === "finished") clearRoomRuns(this.code);
+
     if (this.spectator) {
       this.applySpectator(room);
       return;
@@ -655,13 +661,23 @@ class RoomModeController implements RoomMode {
     const room = state.room;
     const ranked = rankRound(this.gameId, state.players, this.roundScores());
 
+    // En juegos "lower" el parcial de quien no llego a terminar no significa nada
+    // (rankRound ya los empata a todos detras de los que terminaron): mostrarlo
+    // formateado daba numeros de fantasia como "9999 ms" o "3 mov" para alguien
+    // que ni resolvio el tablero. Se muestra "sin terminar" en su lugar.
+    const partialIsReal = getDirection(this.gameId) === "higher";
+
     const rows = ranked.map((r) => ({
       rank: r.rank,
       player: r.player,
       scoreText:
         r.score === null
           ? "sin jugar"
-          : formatScore(this.gameId, r.score) + (r.finished ? "" : " (parcial)"),
+          : r.finished
+            ? formatScore(this.gameId, r.score)
+            : partialIsReal
+              ? `${formatScore(this.gameId, r.score)} (parcial)`
+              : "sin terminar",
       points: r.points,
     }));
 
