@@ -113,11 +113,15 @@ cerrado (`risa` / `sorpresa` / `enojo` / `burla` / `llanto`) y cada cara esta
   llegan a conectar al game server, porque `RoomMode.applyState` corta antes de
   `autoStartGame` para ellos y `onStart` (que dispara el `connect()`) jamas se llama.
 - **Animacion**: cada cara **se mueve** mientras dura la reaccion (bloque "Caras vivas" en
-  `style.css`): keyframes CSS sobre los paths del SVG, sin video ni sprites. Risa que abre
-  la mandibula, dos lagrimas alternadas en el llanto, temblor y cuerpo recalentado en el
-  enojo, guino en la burla. Los rasgos animables llevan un gancho `wb__a-*` puesto en el
-  `Hud` (asi el CSS no depende de `nth-of-type`). **Gotcha**: `transform-box: fill-box` es
-  obligatorio, o el transform SVG toma como origen la esquina del `viewBox`. Se apagan con
+  `style.css`): keyframes CSS sobre los paths del SVG, sin video ni sprites. La **risa es una
+  rana** (cuerpo verde, ojos saltones, saltitos), dos lagrimas alternadas en el llanto,
+  temblor y cuerpo recalentado en el enojo, guino en la burla. Los rasgos animables llevan un
+  gancho `wb__a-*` puesto en el `Hud` (asi el CSS no depende de `nth-of-type`). **Gotcha**:
+  `transform-box: fill-box` es obligatorio, o el transform SVG toma como origen la esquina del
+  `viewBox`. **Gotcha de cascada**: para tenir el cuerpo hay que ganarle a `.is-out.is-emote
+  .wb__face-body` (0,4,0); el enojo le gana sin querer porque su color lo pone una animacion
+  (las animaciones pisan las declaraciones normales), y la risa necesita el `.is-emote` extra
+  o el eliminado que se rie queda violeta con ojos de rana. Se apagan con
   `prefers-reduced-motion`.
 - **Sonido**: cada reaccion suena con un **sample real** (`game/EmoteAudio.ts`), unica
   excepcion del repo a la regla de sintetizar todo con Web Audio. Los mp3 viven en
@@ -127,8 +131,9 @@ cerrado (`risa` / `sorpresa` / `enojo` / `burla` / `llanto`) y cada cara esta
   cantito de burla, dos sollozos). Ojo que en `npm run dev` un archivo faltante **no da
   404**: Vite responde 200 con el index.html y falla el decode; el mismo `catch` lo cubre.
   Suenan para todos, asi que van bajas (pico <= 0.09 las sintetizadas, `SAMPLE_GAIN` = 0.45
-  los samples) y cortas; el cooldown de 1s por jugador evita que se apilen. `blip()` acepta
-  un `delay` para encadenar silabas. El `AudioContext` vive en `game/audioContext.ts`
+  los samples). `blip()` acepta un `delay` para encadenar silabas. **Los samples se superponen
+  a proposito**: duran entre 1.2s y 5s, mas que el cooldown de 1s y mas que la cara, asi que
+  con la mesa llena se apilan. Es deliberado; no cortar el anterior ni limitar la duracion. El `AudioContext` vive en `game/audioContext.ts`
   (modulo hoja, para que el fallback no cierre un ciclo de imports con `EmoteAudio`).
 - **Como**: dock de cabecitas abajo (`.wb__emotes`, z-index por encima del input
   invisible) o atajos **1-5**. Los atajos escuchan en `window` y hacen `preventDefault`,

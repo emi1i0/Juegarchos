@@ -19,19 +19,35 @@ Exactamente estos cinco nombres, en esta carpeta:
 | `burla.mp3`    | Burla     | 4     |
 | `llanto.mp3`   | Llanto    | 5     |
 
-## Requisitos
+## Criterio
 
-- **Duracion <= 1 segundo.** El server tiene un cooldown de 1s por jugador
-  (`EMOTE_COOLDOWN_MS`): un sample mas largo se solapa con la reaccion siguiente y, con
-  8 jugadores en la mesa, tapa la partida.
-- **Livianos** (idealmente < 30 KB): se bajan los cinco al entrar al juego. Mono y
-  ~96 kbps alcanza y sobra para un efecto corto.
-- **Sin silencio al principio.** La reaccion tiene que sonar en el mismo frame en que
-  salta el personaje; medio segundo de silencio inicial la desincroniza.
-- **Normalizados y sin clipping.** El volumen se ajusta en `SAMPLE_GAIN` (0.45), pero si
-  el mp3 viene saturado no hay gain que lo arregle.
-- **Licencia libre para uso comercial** (el sitio tiene AdSense). Sirven CC0 /
-  dominio publico: freesound.org (filtrando por CC0), Pixabay o Mixkit.
+**Las reacciones se superponen y se saturan a proposito.** Duran mas que el cooldown de
+1s del server (`EMOTE_COOLDOWN_MS`) y mas que la cara (`EMOTE_MS`, 1.8s), asi que con la
+mesa llena se apilan varias risas encima de un llanto. Eso es **deliberado**: es lo que
+hace graciosa la mesa, no un bug a corregir. `EmoteAudio.play()` crea un `BufferSource`
+nuevo por reaccion, que es justo lo que permite el apilado; **no** hay que "arreglarlo"
+cortando el sample anterior.
+
+Lo que sigue vigente:
+
+- **Licencia libre para uso comercial** (el sitio tiene AdSense). CC0 / dominio publico:
+  freesound.org filtrando por CC0, Pixabay o Mixkit.
+- **Ojo con el peso**: los cinco se bajan al entrar al juego (hoy ~435 KB en total,
+  todos estereo). Pasar a mono los dejaria a la mitad sin diferencia audible en un
+  efecto corto.
+- **Volumen parejo entre si.** El `SAMPLE_GAIN` es uno solo para los cinco, asi que un
+  sample con mucho mas cuerpo que el resto se lleva la mesa puesta. Hoy la risa y la
+  sorpresa suenan ~2.7x mas fuerte (en RMS) que el enojo o el llanto.
+
+## Los que hay hoy
+
+| Archivo | Duracion | Peso | Nota |
+| ------- | -------- | ---- | ---- |
+| `risa.mp3` | 3.38s | 132 KB | risa aguda tipo rana; el pico llega a 1.0 (saturado, buscado) |
+| `sorpresa.mp3` | 1.25s | 21 KB | arranca con 0.09s de silencio |
+| `enojo.mp3` | 5.08s | 80 KB | el mas largo |
+| `burla.mp3` | 2.65s | 43 KB | arranca con 0.32s de silencio: tarda en entrar respecto del salto |
+| `llanto.mp3` | 4.08s | 159 KB | el mas pesado |
 
 ## Como suenan hoy
 

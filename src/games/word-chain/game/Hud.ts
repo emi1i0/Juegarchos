@@ -37,9 +37,14 @@ const BODY_PATH = "M32 5C47 5 55 19 55 39 55 62 45 73 32 73 19 73 9 62 9 39 9 19
  */
 const EMOTE_FACES: Record<EmoteId, string> = {
   risa: `
-    <path class="wc__ln" d="M18 34Q24 28 30 34"/>
-    <path class="wc__ln" d="M34 34Q40 28 46 34"/>
-    <path class="wc__fl wc__a-mouth" d="M22 46Q32 63 42 46Z"/>`,
+    <circle class="wc__frog-skin" cx="20" cy="22" r="10"/>
+    <circle class="wc__frog-skin" cx="44" cy="22" r="10"/>
+    <circle class="wc__white" cx="20" cy="22" r="7"/>
+    <circle class="wc__white" cx="44" cy="22" r="7"/>
+    <circle class="wc__pupil wc__a-pupil" cx="20" cy="22" r="3.5"/>
+    <circle class="wc__pupil wc__a-pupil" cx="44" cy="22" r="3.5"/>
+    <path class="wc__fl wc__a-mouth" d="M12 44Q32 68 52 44Z"/>
+    <path class="wc__tongue wc__a-tongue" d="M20 52Q32 68 44 52Q32 48 20 52Z"/>`,
   sorpresa: `
     <path class="wc__ln" d="M17 21Q24 17 30 21"/>
     <path class="wc__ln" d="M34 21Q40 17 47 21"/>

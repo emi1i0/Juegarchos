@@ -20,8 +20,8 @@ import { EMOTES, type EmoteId } from "./constants";
 const BASE_URL = "/sfx/emotes/";
 /**
  * Los samples son mucho mas fuertes que los osciladores (pico <= 0.09). Este gain los
- * baja para que una risa no tape el reloj ni el quiebre del eslabon: la reaccion es un
- * gesto, no un evento de la partida.
+ * baja para que una risa no tape el reloj ni el quiebre del eslabon. Es uno solo para las
+ * cinco reacciones, asi que el equilibrio entre ellas depende de como vengan grabadas.
  */
 const SAMPLE_GAIN = 0.45;
 
@@ -54,7 +54,14 @@ export class EmoteAudio {
     for (const { id } of EMOTES) void load(id);
   }
 
-  /** Reproduce el sample. Devuelve `false` si no esta listo, y el llamador sintetiza. */
+  /**
+   * Reproduce el sample. Devuelve `false` si no esta listo, y el llamador sintetiza.
+   *
+   * Cada llamada crea su propio `BufferSource`, asi que las reacciones **se superponen**:
+   * los samples duran mas que el cooldown de 1s del server y que la cara (`EMOTE_MS`), y
+   * con la mesa llena se apilan. Es deliberado (ver `public/sfx/emotes/README.md`): no
+   * cortar el sample anterior ni limitar la duracion.
+   */
   static play(id: EmoteId): boolean {
     const ctx = getAudioContext();
     const buffer = buffers.get(id);

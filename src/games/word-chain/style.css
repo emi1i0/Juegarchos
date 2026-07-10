@@ -713,6 +713,9 @@ body {
 .wc__emo .wc__tongue {
   fill: #ff7a8a;
 }
+.wc__emo .wc__frog-skin {
+  fill: #52a447;
+}
 .wc__emo .wc__tear {
   fill: #8fd3ff;
   stroke: #4a90c2;
@@ -734,14 +737,21 @@ body {
   transform-origin: center;
 }
 
-/* RISA: la mandibula cae y sube, y la cara pega un bote corto. Sin lengua: la boca abierta
-   sola lee mejor a la escala de la ronda (la lengua queda para la burla, que la necesita). */
+/* RISA: es una rana. Ojos saltones, boca enorme, saltitos. El verde del cuerpo se
+   declara abajo, junto al rojo del enojo. */
+.wc__player.is-emote--risa .wc__frog-skin {
+  fill: #52a447;
+}
 .wc__player.is-emote--risa .wc__emo--risa {
-  animation: wc-laugh-bob 0.3s ease-in-out infinite;
+  animation: wc-frog-jump 0.4s ease-in-out infinite;
 }
 .wc__player.is-emote--risa .wc__a-mouth {
-  transform-origin: top center; /* la boca se abre hacia abajo, como una mandibula */
-  animation: wc-laugh-mouth 0.3s ease-in-out infinite;
+  transform-origin: top center;
+  animation: wc-frog-mouth 0.2s ease-in-out infinite alternate;
+}
+.wc__player.is-emote--risa .wc__a-tongue {
+  transform-origin: center;
+  animation: wc-frog-tongue 0.2s ease-in-out infinite alternate;
 }
 
 /* LLANTO: dos lagrimas que caen alternadas (la derecha va media fase atrasada) y un
@@ -795,22 +805,34 @@ body {
   animation: wc-taunt-wink 1.4s ease-in-out infinite;
 }
 
-@keyframes wc-laugh-mouth {
-  0%,
-  100% {
-    transform: scaleY(1);
+@keyframes wc-frog-jump {
+  0%, 100% {
+    transform: translateY(0) scaleY(1) scaleX(1);
+  }
+  30% {
+    transform: translateY(-8px) scaleY(1.05) scaleX(0.95);
   }
   50% {
-    transform: scaleY(0.45);
+    transform: translateY(-10px) scaleY(1.1) scaleX(0.9);
+  }
+  80% {
+    transform: translateY(0) scaleY(0.9) scaleX(1.1);
   }
 }
-@keyframes wc-laugh-bob {
-  0%,
-  100% {
-    transform: translateY(0);
+@keyframes wc-frog-mouth {
+  from {
+    transform: scale(0.9);
   }
-  50% {
-    transform: translateY(1.2px);
+  to {
+    transform: scale(1.1);
+  }
+}
+@keyframes wc-frog-tongue {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(0, 2px);
   }
 }
 @keyframes wc-tear-fall {
@@ -950,6 +972,13 @@ body {
    especificidad) para que el muerto tambien se ponga rojo si se enoja. */
 .wc__player.is-emote--enojo .wc__face-body {
   fill: #a8384f;
+}
+/* `.is-emote` de mas para igualar la especificidad de `.is-out.is-emote` (0,4,0) y, al ir
+   despues, ganarle: el eliminado que se rie tambien se pone verde. Sin eso quedaba con el
+   cuerpo de acero y los ojos de rana. El enojo se salva solo porque su color lo aplica una
+   animacion (`wc-rage-heat`), y la cascada de animaciones pisa las declaraciones normales. */
+.wc__player.is-emote.is-emote--risa .wc__face-body {
+  fill: #52a447;
 }
 
 /* Salto al reaccionar. Va en el avatar y no en `.wc__face` porque esa ya la usa la

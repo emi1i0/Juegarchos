@@ -69,10 +69,13 @@ export class SoundEffects {
     if (EmoteAudio.play(id)) return;
     switch (id) {
       case "risa":
-        // "ja-ja-ja": tres silabas que caen de tono.
-        blip("triangle", 520, 0.07, 0.07, 430, 0);
-        blip("triangle", 470, 0.07, 0.06, 390, 0.1);
-        blip("triangle", 420, 0.08, 0.05, 350, 0.2);
+        // Risa muy aguda y rapida (tipo ardilla/rana de TikTok).
+        blip("sine", 900, 0.06, 0.07, 1100, 0);
+        blip("sine", 1000, 0.06, 0.07, 1200, 0.07);
+        blip("sine", 1100, 0.06, 0.07, 1300, 0.14);
+        blip("sine", 1200, 0.06, 0.07, 1000, 0.21);
+        blip("sine", 1000, 0.06, 0.07, 800, 0.28);
+        blip("sine", 900, 0.06, 0.07, 1100, 0.35);
         break;
       case "sorpresa":
         // Un "oh!" que sube de golpe.
