@@ -14,6 +14,10 @@ import {
   GAP_HALF_WIDTH_MIN,
   DOUBLE_OBSTACLE_CHANCE_MAX,
   OBSTACLE_COLLIDE_TOLERANCE,
+  DOG_ROW_CHANCE_MIN,
+  DOG_ROW_CHANCE_MAX,
+  DOG_SPEED_MIN,
+  DOG_SPEED_MAX,
   SCOOTER_Z,
 } from "./constants";
 
@@ -25,10 +29,10 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 // Narrow → wide, with a spawn weight each. Cars are extra-gated (wide walls).
+// Dogs are NOT here — they spawn as their own dynamic patrol row (see spawnDog).
 const KIND_WEIGHTS: { kind: ObstacleKind; weight: number }[] = [
   { kind: "cone", weight: 3 },
   { kind: "trashcan", weight: 2 },
-  { kind: "dog", weight: 1.4 },
   { kind: "crate", weight: 2 },
   { kind: "pothole", weight: 2.4 },
 ];
@@ -90,6 +94,15 @@ export class ObstacleField {
 
   private spawnRow(speed: number, d: number): void {
     const spacing = lerp(OBSTACLE_SPACING_START, OBSTACLE_SPACING_MIN, d);
+
+    // Sometimes the whole row is a single patrolling dog (the dynamic obstacle),
+    // dodged by timing rather than by finding a gap.
+    if (Math.random() < lerp(DOG_ROW_CHANCE_MIN, DOG_ROW_CHANCE_MAX, d)) {
+      this.spawnDog(d);
+      this.nextSpawnZ -= spacing;
+      return;
+    }
+
     const gapHalf = lerp(GAP_HALF_WIDTH_START, GAP_HALF_WIDTH_MIN, d);
 
     // Drift the safe gap, but never farther than the scooter can travel in time.
@@ -109,6 +122,19 @@ export class ObstacleField {
     if (Math.random() < doubleChance) this.place(-first as -1 | 1, gapX, gapHalf);
 
     this.nextSpawnZ -= spacing;
+  }
+
+  /** A lone dog that starts at one verge and trots across to the other, bouncing
+   *  back at the edges — the game's dynamic obstacle. Left as the only hazard in
+   *  its row (and it doesn't move `prevGapX`, so gap continuity is preserved). */
+  private spawnDog(d: number): void {
+    const range = ROAD_HALF_WIDTH - HALF_WIDTH.dog - 0.1;
+    const startSide: -1 | 1 = Math.random() < 0.5 ? -1 : 1;
+    const vx = lerp(DOG_SPEED_MIN, DOG_SPEED_MAX, d);
+    const dog = new Obstacle("dog", startSide * range, this.nextSpawnZ);
+    dog.setPatrol(-startSide * vx, -range, range); // head toward the far side
+    this.obstacles.push(dog);
+    this.scene.add(dog.group);
   }
 
   /** Places one obstacle fully within the blocked region on the given side. */

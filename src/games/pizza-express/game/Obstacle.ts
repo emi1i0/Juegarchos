@@ -33,6 +33,10 @@ export class Obstacle {
   resolved = false;
   private readonly disposables: (THREE.BufferGeometry | THREE.Material)[] = [];
   private wobble = 0;
+  // Dogs patrol horizontally across the street (dynamic obstacle).
+  private patrolVX = 0;
+  private patrolMin = 0;
+  private patrolMax = 0;
 
   constructor(kind: ObstacleKind, x: number, z: number) {
     this.kind = kind;
@@ -45,12 +49,34 @@ export class Obstacle {
     return this.group.position.z;
   }
 
+  /** Makes the dog trot across the street between [min, max] at `vx` units/s. */
+  setPatrol(vx: number, min: number, max: number): void {
+    this.patrolVX = vx;
+    this.patrolMin = min;
+    this.patrolMax = max;
+    this.group.rotation.y = vx > 0 ? Math.PI : 0; // face the way it's walking
+  }
+
   update(dz: number, dt: number): void {
     this.group.position.z += dz;
     if (this.kind === "dog") {
-      // The dog bounces angrily in place.
+      // Trotting bounce.
       this.wobble += dt * 12;
       this.group.position.y = Math.abs(Math.sin(this.wobble)) * 0.12;
+      // Cross the street, reversing (and turning around) at each edge.
+      if (this.patrolVX !== 0) {
+        let x = this.group.position.x + this.patrolVX * dt;
+        if (x <= this.patrolMin) {
+          x = this.patrolMin;
+          this.patrolVX = Math.abs(this.patrolVX);
+          this.group.rotation.y = Math.PI;
+        } else if (x >= this.patrolMax) {
+          x = this.patrolMax;
+          this.patrolVX = -Math.abs(this.patrolVX);
+          this.group.rotation.y = 0;
+        }
+        this.group.position.x = x;
+      }
     }
   }
 

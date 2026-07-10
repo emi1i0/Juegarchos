@@ -63,6 +63,16 @@ export const GAP_HALF_WIDTH_MIN = 1.25; // tightest safe gap at max difficulty
 export const DOUBLE_OBSTACLE_CHANCE_MAX = 0.55;
 export const OBSTACLE_COLLIDE_TOLERANCE = 0.12; // units of forgiveness
 
+// Dogs are the one **dynamic** obstacle: instead of a static prop, a dog row is a
+// lone dog that trots back and forth across the whole street. You dodge it by
+// timing (be out of its narrow band when it reaches you). Chance grows with
+// difficulty; its patrol speed stays well under the scooter's so it's always
+// avoidable.
+export const DOG_ROW_CHANCE_MIN = 0.12;
+export const DOG_ROW_CHANCE_MAX = 0.26;
+export const DOG_SPEED_MIN = 2.4; // units/s horizontal patrol
+export const DOG_SPEED_MAX = 5.2;
+
 // --- Mailboxes (customers / delivery targets) ---
 export const MAILBOX_SPAWN_Z = -92;
 export const MAILBOX_DESPAWN_MARGIN = 8;

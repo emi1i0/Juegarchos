@@ -43,9 +43,12 @@ the road surface is `y = 0`. The scooter only moves in **X** (steering).
   lean + yaw into turns, engine idle bob, spinning wheels, a headlight. Exposes
   `throwOrigin()` (world point a pizza launches from).
 - `game/Obstacle.ts` + `game/ObstacleField.ts` — road hazards (cone, pothole,
-  trashcan, crate, **car** = wide wall, angry **dog**), all **instant-death**.
-  `ObstacleField` spawns rows that always leave a **guaranteed clear gap** the
-  scooter can reach (see "Fairness" below); obstacles go *outside* the gap.
+  trashcan, crate, **car** = wide wall, and the **dog** = the one *dynamic*
+  hazard), all **instant-death**. `ObstacleField` spawns gap-based rows that always
+  leave a **guaranteed clear gap** the scooter can reach (see "Fairness" below);
+  static obstacles go *outside* the gap. A dog instead spawns as its own **patrol
+  row** (`spawnDog`): a lone dog that trots across the whole street, reversing at
+  the verges (`Obstacle.setPatrol`), dodged by **timing** rather than by a gap.
 - `game/Mailbox.ts` + `game/MailboxField.ts` — customers. A `Mailbox` floats a
   bright bouncing **down-arrow** over it while `pending` (clearer than the old
   pizza icon); delivery flips its flag up. It carries a `reserved` flag set when a
@@ -116,6 +119,16 @@ region), so the clear path is never blocked and never jumps farther than you can
 steer — hard but never luck. A row adds a second obstacle on the other side with
 growing odds (`DOUBLE_OBSTACLE_CHANCE_MAX`), and cars (wide) only spawn where they
 fully fit.
+
+**The dog is the dynamic obstacle.** Every other hazard is static and placed
+outside the row's clear gap; the dog instead trots across the full road width
+(`DOG_SPEED_*`, growing with `d`) as the *only* hazard in its row. It stays fair
+because collision is only tested the single frame it reaches the scooter's Z, its
+band is narrow (`HALF_WIDTH.dog`), and its patrol speed is far below the scooter's
+— so from anywhere you only need to sidestep its band as it arrives. Dog rows
+don't touch `prevGapX`, so gap continuity for the surrounding static rows is
+preserved, and the small sidestep keeps you near that gap line. `DOG_ROW_CHANCE_*`
+tunes how often they appear.
 
 **Difficulty is a stepped function of play time.** `Game.difficulty(playT)`
 quantizes **post-tutorial** play time into levels (`DIFFICULTY_STEP_SECONDS`) so
