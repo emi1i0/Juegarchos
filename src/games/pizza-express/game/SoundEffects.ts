@@ -10,18 +10,22 @@ function getAudioContext(): AudioContext | null {
 }
 
 // --- Continuous 2-stroke moped engine (persistent node graph, not a one-shot) ---
-// Firing rate in Hz: a 2-stroke fires every revolution, so idle ~3000 rpm reads
-// as ~52 Hz and full throttle climbs toward ~128 Hz. The buzz is two detuned
-// saws at the firing rate; the "ring-ding" chatter is band-passed exhaust noise
-// amplitude-chopped by a square at the same rate; a slow LFO wobbles the rate a
-// touch so the idle putters instead of droning.
-const ENGINE_IDLE_HZ = 52;
-const ENGINE_MAX_HZ = 128;
-const ENGINE_VOLUME = 0.05;
+// The target is the classic ANNOYING MOSQUITO whine of a screaming moped, not a
+// low aircraft drone (a first version at 52-128 Hz read exactly like a small
+// plane). So: high firing rate (a 2T fires every revolution — idle here is
+// ~5700 rpm ≈ 95 Hz, flat out ~235 Hz), a HIGHPASS that strips the boomy lows,
+// a wide-open lowpass so the saw harmonics buzz, and an octave-up "whine" saw
+// that carries the sting. The "ring-ding" chatter is band-passed exhaust noise
+// amplitude-chopped at the firing rate; a slow LFO wobbles the rate a touch so
+// it putters instead of droning.
+const ENGINE_IDLE_HZ = 95;
+const ENGINE_MAX_HZ = 235;
+const ENGINE_VOLUME = 0.042;
 
 interface EngineNodes {
   saw: OscillatorNode;
   saw2: OscillatorNode;
+  whine: OscillatorNode;
   chop: OscillatorNode;
   lfo: OscillatorNode;
   noise: AudioBufferSourceNode;
@@ -46,30 +50,46 @@ export class SoundEffects {
     master.gain.linearRampToValueAtTime(ENGINE_VOLUME, now + 0.25);
     master.connect(ctx.destination);
 
-    // Everything tonal goes through a lowpass that opens with the revs.
+    // The tonal chain: highpass (kills the aircraft-drone lows) into a wide
+    // lowpass that opens further with the revs.
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = "highpass";
+    highpass.frequency.setValueAtTime(240, now);
+    highpass.Q.value = 0.5;
+    highpass.connect(master);
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.setValueAtTime(750, now);
+    filter.frequency.setValueAtTime(2600, now);
     filter.Q.value = 0.6;
-    filter.connect(master);
+    filter.connect(highpass);
 
     // Two detuned saws at the firing rate = the body of the buzz.
     const saw = ctx.createOscillator();
     saw.type = "sawtooth";
     saw.frequency.setValueAtTime(ENGINE_IDLE_HZ, now);
     const sawGain = ctx.createGain();
-    sawGain.gain.value = 0.6;
+    sawGain.gain.value = 0.5;
     saw.connect(sawGain);
     sawGain.connect(filter);
 
     const saw2 = ctx.createOscillator();
     saw2.type = "sawtooth";
     saw2.frequency.setValueAtTime(ENGINE_IDLE_HZ, now);
-    saw2.detune.value = 18; // slight detune = rough, mechanical
+    saw2.detune.value = 22; // slight detune = rough, mechanical
     const saw2Gain = ctx.createGain();
-    saw2Gain.gain.value = 0.3;
+    saw2Gain.gain.value = 0.28;
     saw2.connect(saw2Gain);
     saw2Gain.connect(filter);
+
+    // Octave-up saw: the mosquito sting on top of the buzz.
+    const whine = ctx.createOscillator();
+    whine.type = "sawtooth";
+    whine.frequency.setValueAtTime(ENGINE_IDLE_HZ * 2, now);
+    whine.detune.value = -14;
+    const whineGain = ctx.createGain();
+    whineGain.gain.value = 0.24;
+    whine.connect(whineGain);
+    whineGain.connect(filter);
 
     // Exhaust noise, band-passed and amplitude-chopped at the firing rate —
     // this is what makes it read "ring-ding-ding" 2-stroke, not a synth pad.
@@ -82,8 +102,8 @@ export class SoundEffects {
     noise.loop = true;
     const noiseBand = ctx.createBiquadFilter();
     noiseBand.type = "bandpass";
-    noiseBand.frequency.value = 1300;
-    noiseBand.Q.value = 0.9;
+    noiseBand.frequency.value = 2400;
+    noiseBand.Q.value = 1.0;
     const noiseGain = ctx.createGain();
     noiseGain.gain.value = 0.22; // chopped around this base by `chop`
     noise.connect(noiseBand);
@@ -101,21 +121,23 @@ export class SoundEffects {
     // Slow small wobble on the firing rate so the idle putters.
     const lfo = ctx.createOscillator();
     lfo.type = "sine";
-    lfo.frequency.value = 6.5;
+    lfo.frequency.value = 7.5;
     const lfoDepth = ctx.createGain();
-    lfoDepth.gain.value = 2.5;
+    lfoDepth.gain.value = 4;
     lfo.connect(lfoDepth);
     lfoDepth.connect(saw.frequency);
     lfoDepth.connect(saw2.frequency);
+    lfoDepth.connect(whine.frequency);
     lfoDepth.connect(chop.frequency);
 
     saw.start(now);
     saw2.start(now);
+    whine.start(now);
     chop.start(now);
     lfo.start(now);
     noise.start(now);
 
-    engine = { saw, saw2, chop, lfo, noise, filter, master };
+    engine = { saw, saw2, whine, chop, lfo, noise, filter, master };
     engineLastT = -1;
   }
 
@@ -131,15 +153,16 @@ export class SoundEffects {
     const f = ENGINE_IDLE_HZ + (ENGINE_MAX_HZ - ENGINE_IDLE_HZ) * clamped;
     engine.saw.frequency.setTargetAtTime(f, now, 0.09);
     engine.saw2.frequency.setTargetAtTime(f, now, 0.09);
+    engine.whine.frequency.setTargetAtTime(f * 2, now, 0.09);
     engine.chop.frequency.setTargetAtTime(f, now, 0.09);
-    engine.filter.frequency.setTargetAtTime(750 + 900 * clamped, now, 0.12);
+    engine.filter.frequency.setTargetAtTime(2600 + 1600 * clamped, now, 0.12);
   }
 
   /** Cuts the engine (crash / run over) with a quick fade. Safe to re-call. */
   static stopEngine(): void {
     const ctx = getAudioContext();
     if (!ctx || !engine) return;
-    const { saw, saw2, chop, lfo, noise, master } = engine;
+    const { saw, saw2, whine, chop, lfo, noise, master } = engine;
     engine = null;
     const now = ctx.currentTime;
     master.gain.cancelScheduledValues(now);
@@ -148,6 +171,7 @@ export class SoundEffects {
     const end = now + 0.15;
     saw.stop(end);
     saw2.stop(end);
+    whine.stop(end);
     chop.stop(end);
     lfo.stop(end);
     noise.stop(end);
