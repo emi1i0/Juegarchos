@@ -30,12 +30,14 @@ cuesta tiempo.
    pertenencia con `(cursorCol + i) % COLS`. Enter/click valida. Encontrar la
    corrida correcta (`CODES` = 1) pasa el nivel.
 3. **BruteForce** (`levels/bruteforce.ts`) — un carrete de letras por columna que
-   scrollea sin parar (animado via `update(dt)`). Una banda central marca la fila
-   de captura y en cada carrete hay una letra objetivo resaltada en ROJO (las
-   letras de la clave). El jugador DETIENE la columna activa (Espacio/Enter/Abajo,
-   o tap) justo cuando su letra roja cae en la banda: acierto -> se fija (verde) y
-   el foco pasa a la siguiente; fallo -> flash rojo y sigue girando. Todas fijadas
-   = nivel resuelto. Es un juego de reflejos, no de alineado.
+   scrollea **hacia abajo** sin parar (animado via `update(dt)`). La clave siempre
+   tiene `WORD_LEN` (6) letras — se sortea de `WORD_POOL` (palabras de exactamente
+   6 letras), asi el nivel no cambia de tamano. Una banda central marca la fila de
+   captura y en cada carrete hay una letra objetivo en ROJO. El jugador DETIENE la
+   columna activa (Espacio/Enter/Abajo, o tap) justo cuando su letra roja cae en la
+   banda: acierto -> se fija (verde) y el foco pasa a la siguiente; **fallo ->
+   reinicia todas las columnas** (se vuelve a empezar desde cero). Todas fijadas =
+   nivel resuelto. Es un juego de reflejos, no de alineado.
 
 Cada nivel implementa `HackLevel` (`levels/types.ts`) y recibe un `LevelContext`
 con `onSolved` (fin de nivel), `onProgress` (paso intermedio; dispara el save

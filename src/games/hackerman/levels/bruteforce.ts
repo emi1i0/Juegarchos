@@ -13,19 +13,32 @@ import { type HackLevel, type LevelContext } from "./types";
  */
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+// La clave siempre tiene WORD_LEN letras (= cantidad de columnas), asi el nivel
+// no cambia de tamano entre partidas. Todas deben tener exactamente WORD_LEN
+// letras y solo A-Z (sin acentos ni ñ).
+const WORD_LEN = 6;
 const WORDS = [
   "ACCESO",
-  "SISTEMA",
   "KERNEL",
   "VECTOR",
   "SOCKET",
   "ROUTER",
-  "CIFRADO",
   "MATRIZ",
-  "BINARIO",
-  "FIREWALL",
-  "PAQUETE",
+  "SERVER",
+  "PUERTO",
+  "CODIGO",
+  "NUCLEO",
+  "MODULO",
+  "BUFFER",
+  "SCRIPT",
+  "CIFRAR",
+  "PIRATA",
+  "CLONAR",
+  "HACKER",
 ];
+// Red de seguridad: solo se sortean las de largo correcto (si alguien agrega una
+// de otro largo, se descarta en vez de cambiar el tamano del nivel).
+const WORD_POOL = WORDS.filter((w) => w.length === WORD_LEN);
 
 const CYCLE = 10; // letras por vuelta del carrete
 const ROW_H = 34; // px por fila (5 filas visibles => 170px, fijado en el CSS)
@@ -152,7 +165,7 @@ export class BruteForceLevel implements HackLevel {
 
   begin(): void {
     this.clearMissTimer();
-    this.word = WORDS[Math.floor(Math.random() * WORDS.length)];
+    this.word = WORD_POOL[Math.floor(Math.random() * WORD_POOL.length)];
     this.active = 0;
     this.reels = [];
     this.reelsEl.innerHTML = "";
@@ -193,7 +206,7 @@ export class BruteForceLevel implements HackLevel {
         letters,
         targetIdx,
         offset: Math.random() * CYCLE,
-        speed: 4.8 + Math.random() * 2.4, // DOUBLE SPEED (was 2.4 + 1.2)
+        speed: 3.84 + Math.random() * 1.92, // 20% mas lento (era 4.8 + rand*2.4)
         locked: false,
       });
     }
@@ -206,7 +219,9 @@ export class BruteForceLevel implements HackLevel {
   update(dt: number): void {
     for (const reel of this.reels) {
       if (reel.locked) continue;
-      reel.offset = (reel.offset + reel.speed * dt) % CYCLE;
+      // Sentido contrario al anterior: el offset decrece (las letras bajan en vez
+      // de subir). El wrap contempla negativos para quedar siempre en [0, CYCLE).
+      reel.offset = ((reel.offset - reel.speed * dt) % CYCLE + CYCLE) % CYCLE;
     }
     this.reels.forEach((_, i) => this.renderReel(i));
   }

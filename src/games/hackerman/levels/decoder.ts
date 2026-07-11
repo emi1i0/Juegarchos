@@ -11,8 +11,8 @@ import { type HackLevel, type LevelContext } from "./types";
  * codigo, asi que hay que engancharlo mientras se mueve. El cursor arrastra una
  * "ventana" de `CODE_LEN` celdas y **da la vuelta** (si sale por un borde entra
  * por el opuesto, estilo loop), por lo que la ventana puede atravesar la pared.
- * Cuando la ventana coincide con el codigo, Enter la valida. Errar da flash rojo.
- * Se descifran `CODES` codigos para completar el nivel.
+ * Cuando la ventana coincide con el codigo, Enter la valida. Errar solo suena
+ * (no marca nada). Se descifran `CODES` codigos para completar el nivel.
  */
 
 const ROWS = 8;
@@ -298,20 +298,9 @@ export class DecoderLevel implements HackLevel {
         this.newCode();
       }, 400);
     } else {
+      // Miss: solo feedback sonoro. No se marca ninguna celda en rojo ni se
+      // bloquea el input (podes reintentar al toque mientras la grilla se mueve).
       SoundEffects.playError();
-      this.busy = true;
-      for (let i = 0; i < CODE_LEN; i++) {
-        const idx = this.cursorRow * COLS + ((this.cursorCol + i) % COLS);
-        this.cells[idx].classList.add("is-miss");
-      }
-      this.wrongTimer = window.setTimeout(() => {
-        for (let i = 0; i < CODE_LEN; i++) {
-          const idx = this.cursorRow * COLS + ((this.cursorCol + i) % COLS);
-          this.cells[idx]?.classList.remove("is-miss");
-        }
-        this.busy = false;
-        this.wrongTimer = null;
-      }, 500);
     }
   }
 
