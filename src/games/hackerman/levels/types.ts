@@ -29,6 +29,12 @@ export interface HackLevel {
   mount(host: HTMLElement): void;
   /** (Re)genera el puzzle y arranca desde cero. */
   begin(): void;
+  /**
+   * Avance por frame (segundos). Opcional: solo lo implementan los niveles con
+   * animacion propia (p.ej. BruteForce, cuyas columnas scrollean). `Game` lo
+   * llama en cada tick mientras el nivel esta activo.
+   */
+  update?(dt: number): void;
   /** Input de teclado (solo se llama mientras el nivel esta activo). */
   handleKey(e: KeyboardEvent): void;
   /** Libera timers / listeners propios. El DOM lo limpia `Game` vaciando el host. */

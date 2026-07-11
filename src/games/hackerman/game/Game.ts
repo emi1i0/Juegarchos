@@ -198,6 +198,8 @@ export class Game {
       // un F5 (o una pestana en segundo plano) no regala tiempo.
       this.elapsedTime = this.room ? elapsedSince(this.startedAt) : this.elapsedTime + dt;
       this.hud.updateTime(this.currentCentis());
+      // Niveles con animacion propia (BruteForce) avanzan aca.
+      this.levels[this.currentLevel]?.update?.(dt);
     }
   }
 

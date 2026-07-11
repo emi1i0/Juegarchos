@@ -39,7 +39,7 @@ export class Hud {
     this.timeEl.textContent = "TIEMPO 0:00.00";
     this.levelEl = document.createElement("div");
     this.levelEl.className = "hud-bar__level";
-    this.levelEl.textContent = "NIVEL 1/3";
+    this.levelEl.textContent = "FASE 1/3";
     this.statusEl = document.createElement("div");
     this.statusEl.className = "hud-bar__status";
     this.statusEl.textContent = "";
@@ -115,8 +115,8 @@ export class Hud {
   }
 
   setLevel(index: number, total: number, title: string, controls: string): void {
-    this.levelEl.textContent = `NIVEL ${index + 1}/${total}`;
-    this.levelTitleEl.textContent = `NIVEL ${index + 1} — ${title}`;
+    this.levelEl.textContent = `FASE ${index + 1}/${total}`;
+    this.levelTitleEl.textContent = `FASE ${index + 1} · ${title}`;
     this.levelControlsEl.textContent = controls;
   }
 
