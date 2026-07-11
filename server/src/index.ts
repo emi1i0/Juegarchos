@@ -4,6 +4,9 @@ import { fragmentCount, initialCount, wordCount } from "./dictionary.js";
 import { registerWordBomb } from "./games/wordbomb.js";
 import { registerWordChain } from "./games/wordchain.js";
 import { registerPong } from "./games/pong.js";
+import { registerBasta } from "./games/basta.js";
+import { registerImpostor } from "./games/impostor.js";
+import { impostorWordCount } from "./words-impostor.js";
 
 /**
  * Game server autoritativo de tiempo real. v1: Bomba Palabra. Complementa la
@@ -28,6 +31,7 @@ const httpServer = createServer((req, res) => {
         words: wordCount(),
         fragments: fragmentCount(),
         initials: initialCount(),
+        impostorWords: impostorWordCount(),
       }),
     );
     return;
@@ -43,6 +47,8 @@ const io = new Server(httpServer, {
 registerWordBomb(io);
 registerWordChain(io);
 registerPong(io);
+registerBasta(io);
+registerImpostor(io);
 
 httpServer.listen(PORT, () => {
   console.log(
