@@ -68,9 +68,9 @@ export const PERFECT_OFFSET = 0.14;
  * (the run ends). This is the strict "must stack within the last-window line"
  * rule — a bare corner touch no longer counts.
  */
-export const MAX_LANDING_OFFSET = FLOOR_W / 2 - WINDOW_OUTER_EDGE;
+export const MAX_LANDING_OFFSET = 0.85; // More permissive landing window (was: 0.75)
 /** |comOffset| (world units) at which the tower topples and the run ends. */
-export const TOPPLE_LIMIT = FLOOR_W * 0.55;
+export const TOPPLE_LIMIT = FLOOR_W * 0.50; // Slightly tighter limit for center-of-mass failures (was: FLOOR_W * 0.55)
 /** Tower tilt (rad) when the center of mass reaches TOPPLE_LIMIT. */
 export const MAX_LEAN = 0.13;
 /** Angular spring frequency of the post-drop wobble, rad/s. */
@@ -78,7 +78,7 @@ export const WOBBLE_FREQ = 5.4;
 /** Damping of the wobble spring. */
 export const WOBBLE_DAMP = 2.5;
 /** How hard a misaligned drop kicks the wobble, rad/s per unit of offset. */
-export const WOBBLE_IMPULSE = 0.11;
+export const WOBBLE_IMPULSE = 0.15; // Kicks the wobble spring harder on misaligned drops (was: 0.11)
 /** Whip: how much more the top of the tower sways than a rigid lean would. */
 export const WHIP_GAIN = 1.15;
 /** Continuous "wind sway" the tower develops once its COM drifts. */
